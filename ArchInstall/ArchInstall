@@ -1,0 +1,238 @@
+#!/bin/bash
+
+
+setfont cyr-sun16 2>/dev/null
+
+echo -e "\033[1;33mУстановка\033[0m"
+
+
+
+# === Переменные ===
+# Файловая система (ext4 или btrfs)
+FILESYSTEM=""
+# Часовой пояс
+TIMEZONE=""
+# Имя пользователя
+USERNAME=""
+# Пароль пользователя
+USER_PASSWORD=""
+# Имя хоста
+HOSTNAME=""
+# Диск для установки
+DISK=""
+# Размер раздела EFI
+EFI_PARTITION_SIZE="512MiB"
+# Размер корневого раздела (оставшееся место)
+ROOT_PARTITION_SIZE="100%"
+
+# === Функции ===
+
+# Функция для вывода сообщения об ошибке и завершения скрипта
+error_handler() {
+  echo -e "\n\033[1;31mОшибка: $1\033[0m"
+  exit 1
+}
+
+# Функция для проверки, является ли команда успешной
+check_command() {
+  $1
+  if [ $? -ne 0 ]; then
+    error_handler "$2"
+  fi
+}
+
+# Функция для выбора таймзоны (регион и город)
+select_timezone() {
+  echo -e "\n\033[1;32m=== ВЫБОР ЧАСОВОГО ПОЯСА ===\033[0m"
+  echo -e "\033[1;33mВыберите регион:\033[0m"
+  PS3="> "
+  REGIONS=($(timedatectl list-timezones | cut -d'/' -f1 | sort -u))
+  select REGION in "${REGIONS[@]}"; do
+    [[ -n $REGION ]] && break || echo -e "\033[1;31mНеверный выбор!\033[0m"
+  done
+
+  echo -e "\n\033[1;33mВыберите город:\033[0m"
+  CITIES=($(timedatectl list-timezones | grep "^$REGION/" | cut -d'/' -f2))
+  select CITY in "${CITIES[@]}"; do
+    [[ -n $CITY ]] && break || echo -e "\033[1;31mНеверный выбор!\033[0m"
+  done
+
+  TIMEZONE="$REGION/$CITY"
+  echo -e "\n\033[1;32mВыбран часовой пояс: \033[1;33m$TIMEZONE\033[0m"
+}
+
+# === Выбор файловой системы ===
+while true; do
+  read -p "Выберите файловую систему (ext4 или btrfs): " FILESYSTEM
+  case $FILESYSTEM in
+    ext4|btrfs)
+      break
+      ;;
+    *)
+      echo "Неверный выбор. Пожалуйста, выберите ext4 или btrfs."
+      ;;
+  esac
+done
+
+# === Выбор диска ===
+echo -e "\n\033[1;32m=== ВЫБОР ДИСКА ===\033[0m"
+echo -e "\033[1;33mДоступные диски:\033[0m"
+lsblk -d -p -o NAME,SIZE,MODEL | grep -v "ROM\|loop\|sr0"
+echo -e "\n\033[1;33mВведите полный путь к диску (например, /dev/sda или /dev/nvme0n1):\033[0m"
+read -p "> " DISK
+
+# === Определение разделов ===
+if [[ $DISK =~ "nvme" ]]; then
+    EFI_PART="${DISK}p1"
+    ROOT_PART="${DISK}p2"
+else
+    EFI_PART="${DISK}1"
+    ROOT_PART="${DISK}2"
+fi
+
+# === Разметка диска ===
+echo -e "\n\033[1;32m=== РАЗМЕТКА ДИСКА ===\033[0m"
+echo -e "\033[1;33mСоздание разделов на $DISK...\033[0m"
+
+# Очистка диска
+check_command "parted -s \"$DISK\" mklabel gpt" "Не удалось создать таблицу разделов GPT"
+
+# Создание раздела EFI (если система работает в режиме EFI)
+if [ -d /sys/firmware/efi/ ]; then
+    echo -e "\033[1;33mСоздание раздела EFI...\033[0m"
+    check_command "parted -s \"$DISK\" mkpart primary fat32 1MiB $EFI_PARTITION_SIZE" "Не удалось создать раздел EFI"
+    check_command "parted -s \"$DISK\" set 1 esp on" "Не удалось установить флаг esp на раздел EFI"
+fi
+
+# Создание корневого раздела
+echo -e "\033[1;33mСоздание корневого раздела...\033[0m"
+ROOT_START=$(parted -s "$DISK" print free | awk '/^ / {print $2}' | head -n 1)
+check_command "parted -s \"$DISK\" mkpart primary btrfs $ROOT_START $ROOT_PARTITION_SIZE" "Не удалось создать корневой раздел"
+
+# === Форматирование разделов ===
+if [ -d /sys/firmware/efi/ ]; then
+    check_command "mkfs.vfat -F32 $EFI_PART" "Не удалось отформатировать раздел EFI"
+fi
+check_command "mkfs.$FILESYSTEM $ROOT_PART" "Не удалось отформатировать корневой раздел"
+
+# === Монтирование разделов ===
+if [ "$FILESYSTEM" == "btrfs" ]; then
+  # Монтирование корневого раздела (временное)
+  check_command "mount $ROOT_PART /mnt" "Не удалось смонтировать корневой раздел"
+
+  # Создание подтомов
+  SUBVOLUMES="
+    @
+    @home
+    @var
+    @.snapshots
+    @log
+    @pkg
+  "
+  for SUBVOLUME in $SUBVOLUMES; do
+    check_command "btrfs subvolume create /mnt/$SUBVOLUME" "Не удалось создать подтом $SUBVOLUME"
+  done
+
+  # Размонтирование корневого раздела
+  check_command "umount /mnt" "Не удалось размонтировать корневой раздел"
+
+  # Монтирование подтомов с опциями
+  BTRFS_OPTIONS="noatime,compress=zstd:2,ssd,space_cache=v2,discard=async"
+  check_command "mount -o subvol=@,$BTRFS_OPTIONS $ROOT_PART /mnt" "Не удалось смонтировать подтом @"
+  mkdir -p /mnt/{home,var,.snapshots,log,pkg}
+  check_command "mount -o subvol=@home,$BTRFS_OPTIONS $ROOT_PART /mnt/home" "Не удалось смонтировать подтом @home"
+  check_command "mount -o subvol=@var,$BTRFS_OPTIONS $ROOT_PART /mnt/var" "Не удалось смонтировать подтом @var"
+  check_command "mount -o subvol=@.snapshots,$BTRFS_OPTIONS $ROOT_PART /mnt/.snapshots" "Не удалось смонтировать подтом @.snapshots"
+  check_command "mount -o subvol=@log,$BTRFS_OPTIONS $ROOT_PART /mnt/log" "Не удалось смонтировать подтом @log"
+  check_command "mount -o subvol=@pkg,$BTRFS_OPTIONS $ROOT_PART /mnt/pkg" "Не удалось смонтировать подтом @pkg"
+else
+  # Монтирование корневого раздела (ext4) с опциями
+  EXT4_OPTIONS="noatime,discard,ssd,defaults"
+  check_command "mount -o $EXT4_OPTIONS $ROOT_PART /mnt" "Не удалось смонтировать корневой раздел"
+fi
+
+# Монтирование раздела EFI
+if [ -d /sys/firmware/efi/ ]; then
+  mkdir -p /mnt/boot/efi
+  check_command "mount $EFI_PART /mnt/boot/efi" "Не удалось смонтировать раздел EFI"
+fi
+
+# === Установка базовой системы ===
+check_command "pacstrap /mnt base linux linux-firmware vim networkmanager dhcpcd plasma-desktop konsole firefox firefox-i18n-ru ttf-liberation noto-fonts-cjk noto-fonts-emoji" "Не удалось установить базовую систему и KDE Plasma"
+
+# === Генерация fstab ===
+check_command "genfstab -U /mnt >> /mnt/etc/fstab" "Не удалось сгенерировать fstab"
+
+# === Выбор часового пояса ===
+select_timezone
+
+# === Chroot-настройка ===
+check_command "arch-chroot /mnt /bin/bash -c '
+  # Выбор часового пояса
+  ln -sf /usr/share/zoneinfo/$TIMEZONE /etc/localtime
+  hwclock --systohc
+
+  # Русская локализация
+  echo "ru_RU.UTF-8 UTF-8" > /etc/locale.gen
+  echo "ru_RU ISO-8859-5" >> /etc/locale.gen
+  echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
+  locale-gen
+  echo "LANG=ru_RU.UTF-8" > /etc/locale.conf
+  echo "KEYMAP=ru" > /etc/vconsole.conf
+
+  # Имя хоста
+  echo $HOSTNAME > /etc/hostname
+  echo "127.0.0.1 localhost" >> /etc/hosts
+  echo "::1       localhost" >> /etc/hosts
+
+  # Initramfs
+  mkinitcpio -P
+
+  # Пароль root
+  echo "root:$ROOT_PASSWORD" | chpasswd
+
+  # Создание пользователя
+  useradd -m -g users -G wheel -s /bin/bash $USERNAME
+  echo "$USERNAME:$USER_PASSWORD" | chpasswd
+
+  # Sudo
+  echo "%wheel ALL=(ALL) ALL" >> /etc/sudoers
+
+  # Включение NetworkManager
+  systemctl enable NetworkManager
+
+  # Включение sddm (Display Manager для KDE)
+  systemctl enable sddm
+'" "Не удалось выполнить chroot-настройку"
+
+# === Установка GRUB ===
+if [ -d /sys/firmware/efi/ ]; then
+  # EFI
+  check_command "arch-chroot /mnt /bin/bash -c '
+    grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB
+    grub-mkconfig -o /boot/grub/grub.cfg
+  '" "Не удалось установить GRUB (EFI)"
+else
+  # BIOS
+  check_command "arch-chroot /mnt /bin/bash -c '
+    grub-install $DISK
+    grub-mkconfig -o /boot/grub/grub.cfg
+  '" "Не удалось установить GRUB (BIOS)"
+fi
+
+# === Размонтирование разделов ===
+echo -e "\n\033[1;32m=== Размонтирование разделов ===\033[0m"
+if [ -d /sys/firmware/efi/ ]; then
+    check_command "umount /mnt/boot/efi" "Не удалось размонтировать раздел EFI"
+fi
+check_command "umount /mnt/home" "Не удалось размонтировать раздел /home"
+check_command "umount /mnt/var" "Не удалось размонтировать раздел /var"
+check_command "umount /mnt/.snapshots" "Не удалось размонтировать раздел /.snapshots"
+check_command "umount /mnt/log" "Не удалось размонтировать раздел /log"
+check_command "umount /mnt/pkg" "Не удалось размонтировать раздел /pkg"
+check_command "umount /mnt" "Не удалось размонтировать корневой раздел"
+
+# === Перезагрузка ===
+echo -e "\n\033[1;32m=== Перезагрузка системы ===\033[0m"
+echo -e "\033[1;33mПерезагрузка...\033[0m"
+reboot
