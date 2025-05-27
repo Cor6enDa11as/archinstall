@@ -6,7 +6,6 @@ setfont cyr-sun16 2>/dev/null
 echo -e "\033[1;33mУстановка\033[0m"
 
 
-
 # === Переменные ===
 # Файловая система (ext4 или btrfs)
 FILESYSTEM=""
@@ -21,7 +20,7 @@ HOSTNAME=""
 # Диск для установки
 DISK=""
 # Размер раздела EFI
-EFI_PARTITION_SIZE="512MiB"
+EFI_PARTITION_SIZE="512M"
 # Размер корневого раздела (оставшееся место)
 ROOT_PARTITION_SIZE="100%"
 
@@ -81,6 +80,23 @@ lsblk -d -p -o NAME,SIZE,MODEL | grep -v "ROM\|loop\|sr0"
 echo -e "\n\033[1;33mВведите полный путь к диску (например, /dev/sda или /dev/nvme0n1):\033[0m"
 read -p "> " DISK
 
+# === Проверка существования диска ===
+if [ ! -b "$DISK" ]; then
+  error_handler "Диск $DISK не найден"
+fi
+
+# === Проверка, не смонтирован ли диск ===
+if mount | grep -q "$DISK"; then
+  error_handler "Диск $DISK смонтирован. Размонтируйте его перед продолжением."
+fi
+
+# === Разметка диска ===
+echo -e "\n\033[1;32m=== РАЗМЕТКА ДИСКА ===\033[0m"
+echo -e "\033[1;33mСоздание разделов на $DISK...\033[0m"
+
+# Создание разделов с помощью fdisk
+check_command "echo -e 'o\nn\np\n1\n\n+${EFI_PARTITION_SIZE}\nt\nef00\nn\np\n2\n\n\nw\n' | fdisk $DISK" "Не удалось создать разделы с помощью fdisk"
+
 # === Определение разделов ===
 if [[ $DISK =~ "nvme" ]]; then
     EFI_PART="${DISK}p1"
@@ -89,25 +105,6 @@ else
     EFI_PART="${DISK}1"
     ROOT_PART="${DISK}2"
 fi
-
-# === Разметка диска ===
-echo -e "\n\033[1;32m=== РАЗМЕТКА ДИСКА ===\033[0m"
-echo -e "\033[1;33mСоздание разделов на $DISK...\033[0m"
-
-# Очистка диска
-check_command "parted -s \"$DISK\" mklabel gpt" "Не удалось создать таблицу разделов GPT"
-
-# Создание раздела EFI (если система работает в режиме EFI)
-if [ -d /sys/firmware/efi/ ]; then
-    echo -e "\033[1;33mСоздание раздела EFI...\033[0m"
-    check_command "parted -s \"$DISK\" mkpart primary fat32 1MiB $EFI_PARTITION_SIZE" "Не удалось создать раздел EFI"
-    check_command "parted -s \"$DISK\" set 1 esp on" "Не удалось установить флаг esp на раздел EFI"
-fi
-
-# Создание корневого раздела
-echo -e "\033[1;33mСоздание корневого раздела...\033[0m"
-ROOT_START=$(parted -s "$DISK" print free | awk '/^ / {print $2}' | head -n 1)
-check_command "parted -s \"$DISK\" mkpart primary btrfs $ROOT_START $ROOT_PARTITION_SIZE" "Не удалось создать корневой раздел"
 
 # === Форматирование разделов ===
 if [ -d /sys/firmware/efi/ ]; then
@@ -158,7 +155,7 @@ if [ -d /sys/firmware/efi/ ]; then
 fi
 
 # === Установка базовой системы ===
-check_command "pacstrap /mnt base linux linux-firmware vim networkmanager dhcpcd plasma-desktop konsole firefox firefox-i18n-ru ttf-liberation noto-fonts-cjk noto-fonts-emoji" "Не удалось установить базовую систему и KDE Plasma"
+check_command "pacstrap /mnt base linux linux-firmware vim networkmanager dhcpcd kde-plasma-desktop konsole firefox firefox-i18n-ru ttf-liberation noto-fonts-cjk noto-fonts-emoji" "Не удалось установить базовую систему и KDE Plasma"
 
 # === Генерация fstab ===
 check_command "genfstab -U /mnt >> /mnt/etc/fstab" "Не удалось сгенерировать fstab"
