@@ -7,6 +7,15 @@ echo -e "\033[1;33mУстановка\033[0m"
 
 
 
+#!/bin/bash
+
+# === Настройка шрифта консоли для кириллицы (в начале скрипта) ===
+echo -e "\n\033[1;32m=== Настройка шрифта консоли для кириллицы ===\033[0m"
+echo -e "\033[1;33mУстановка шрифта cyr-sun16 для консоли...\033[0m"
+setfont cyr-sun16 2>/dev/null
+loadkeys ru
+echo -e "\033[1;32mШрифт установлен. После перезагрузки консоль будет отображать кириллицу.\033[0m"
+
 # === Переменные ===
 # Файловая система (ext4 или btrfs)
 FILESYSTEM=""
@@ -102,16 +111,11 @@ fi
 # === Размонтирование диска, если он смонтирован ===
 if mount | grep -q "$DISK"; then
   echo -e "\033[1;33mДиск $DISK смонтирован. Размонтирую его...\033[0m"
-  # Попытка обычного размонтирования
-  umount $DISK 2>/dev/null
+  # Попытка рекурсивного размонтирования
+  umount -R /mnt 2>/dev/null
   if [ $? -ne 0 ]; then
-    echo -e "\033[1;31mНе удалось размонтировать диск $DISK обычным способом. Попробую принудительно...\033[0m"
-    # Попытка принудительного размонтирования
-    umount -l $DISK 2>/dev/null
-    if [ $? -ne 0 ]; then
-      echo -e "\033[1;31mНе удалось принудительно размонтировать диск $DISK. Пожалуйста, размонтируйте его вручную и запустите скрипт снова.\033[0m"
-      exit 1
-    fi
+    echo -e "\033[1;31mНе удалось размонтировать диск $DISK с помощью umount -R /mnt. Пожалуйста, перезагрузите систему и попробуйте снова.\033[0m"
+    exit 1
   fi
   echo -e "\033[1;32mДиск $DISK успешно размонтирован.\033[0m"
 fi
@@ -201,7 +205,7 @@ if [ -d /sys/firmware/efi/ ]; then
 fi
 
 # === Установка базовой системы ===
-check_command "pacstrap /mnt base linux linux-firmware vim networkmanager dhcpcd plasma-desktop konsole firefox firefox-i18n-ru ttf-liberation noto-fonts-cjk noto-fonts-emoji" "Не удалось установить базовую систему и KDE Plasma"
+check_command "pacstrap /mnt base linux linux-firmware vim networkmanager dhcpcd kde-plasma-desktop konsole firefox firefox-i18n-ru ttf-liberation noto-fonts-cjk noto-fonts-emoji" "Не удалось установить базовую систему и KDE Plasma"
 
 # === Генерация fstab ===
 check_command "genfstab -U /mnt >> /mnt/etc/fstab" "Не удалось сгенерировать fstab"
@@ -216,12 +220,12 @@ check_command "arch-chroot /mnt /bin/bash -c '
   hwclock --systohc
 
   # Русская локализация
-  echo "ru_RU.UTF-8 UTF-8" > /etc/locale.gen
+  echo "ru_RU.UTF-8 UTF-8" | tee /etc/locale.gen
   echo "ru_RU ISO-8859-5" >> /etc/locale.gen
   echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
   locale-gen
-  echo "LANG=ru_RU.UTF-8" > /etc/locale.conf
-  echo "KEYMAP=ru" > /etc/vconsole.conf
+  echo "LANG=ru_RU.UTF-8" | tee /etc/locale.conf
+  echo "KEYMAP=ru" | tee /etc/vconsole.conf
 
   # Имя хоста
   echo $HOSTNAME > /etc/hostname
