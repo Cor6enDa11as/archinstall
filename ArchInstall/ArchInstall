@@ -52,7 +52,7 @@ select_timezone() {
   echo -e "\033[1;33mВыберите регион:\033[0m"
   PS3="> "
   # Получаем список регионов, удаляем пустые строки и дубликаты
-  REGIONS=($(timedatectl list-timezones | awk -F'/' '{print $1}' | sort -u | grep -v '^$' ))
+  REGIONS=($(timedatectl list-timezones | awk -F'/' '{print $1}' | sort -u | grep -v '^$' | tr -d '\r'))
   if [ ${#REGIONS[@]} -eq 0 ]; then
     error_handler "Не удалось получить список регионов. Проверьте вывод timedatectl list-timezones."
   fi
@@ -61,7 +61,7 @@ select_timezone() {
   done
 
   echo -e "\n\033[1;33mВыберите город:\033[0m"
-  CITIES=($(timedatectl list-timezones | grep "^$REGION/" | awk -F'/' '{print $2}' | sort -u | grep -v '^$' ))
+  CITIES=($(timedatectl list-timezones | grep "^$REGION/" | awk -F'/' '{print $2}' | sort -u | grep -v '^$' | tr -d '\r'))
   if [ ${#CITIES[@]} -eq 0 ]; then
     error_handler "Не удалось получить список городов для региона $REGION. Проверьте вывод timedatectl list-timezones."
   fi
@@ -108,7 +108,14 @@ echo -e "\n\033[1;32m=== РАЗМЕТКА ДИСКА ===\033[0m"
 echo -e "\033[1;33mСоздание разделов на $DISK...\033[0m"
 
 # Создание разделов с помощью fdisk
-check_command "echo -e 'o\nn\np\n1\n\n+${EFI_PARTITION_SIZE}\nt\nef00\nn\np\n2\n\n\nw\n' | fdisk $DISK" "Не удалось создать разделы с помощью fdisk"
+echo -e "o\nn\np\n1\n\n+${EFI_PARTITION_SIZE}\nt\nef00\nn\np\n2\n\n\nw\n" | fdisk $DISK
+if [ $? -ne 0 ]; then
+  error_handler "Не удалось создать разделы с помощью fdisk"
+fi
+
+# Вывод таблицы разделов
+echo -e "\n\033[1;33mТаблица разделов после fdisk:\033[0m"
+fdisk -l $DISK
 
 # Задержка, чтобы разделы появились в системе
 sleep 2
@@ -124,9 +131,11 @@ fi
 
 # Проверка существования разделов
 if [ ! -b "$EFI_PART" ]; then
+  echo -e "\033[1;31mРаздел EFI $EFI_PART не найден!\033[0m"
   error_handler "Раздел EFI $EFI_PART не найден"
 fi
 if [ ! -b "$ROOT_PART" ]; then
+  echo -e "\033[1;31mКорневой раздел $ROOT_PART не найден!\033[0m"
   error_handler "Корневой раздел $ROOT_PART не найден"
 fi
 
