@@ -43,15 +43,28 @@ check_command() {
 # Функция для выбора таймзоны (регион и город)
 select_timezone() {
   echo -e "\n\033[1;32m=== ВЫБОР ЧАСОВОГО ПОЯСА ===\033[0m"
+
+  # Проверка наличия timedatectl
+  if ! command -v timedatectl &> /dev/null; then
+    error_handler "Команда timedatectl не найдена. Установите systemd."
+  fi
+
   echo -e "\033[1;33mВыберите регион:\033[0m"
   PS3="> "
-  REGIONS=($(timedatectl list-timezones | cut -d'/' -f1 | sort -u))
+  # Получаем список регионов, удаляем пустые строки и дубликаты
+  REGIONS=($(timedatectl list-timezones | awk -F'/' '{print $1}' | sort -u | grep -v '^$' ))
+  if [ ${#REGIONS[@]} -eq 0 ]; then
+    error_handler "Не удалось получить список регионов. Проверьте вывод timedatectl list-timezones."
+  fi
   select REGION in "${REGIONS[@]}"; do
     [[ -n $REGION ]] && break || echo -e "\033[1;31mНеверный выбор!\033[0m"
   done
 
   echo -e "\n\033[1;33mВыберите город:\033[0m"
-  CITIES=($(timedatectl list-timezones | grep "^$REGION/" | cut -d'/' -f2))
+  CITIES=($(timedatectl list-timezones | grep "^$REGION/" | awk -F'/' '{print $2}' | sort -u | grep -v '^$' ))
+  if [ ${#CITIES[@]} -eq 0 ]; then
+    error_handler "Не удалось получить список городов для региона $REGION. Проверьте вывод timedatectl list-timezones."
+  fi
   select CITY in "${CITIES[@]}"; do
     [[ -n $CITY ]] && break || echo -e "\033[1;31mНеверный выбор!\033[0m"
   done
@@ -97,6 +110,9 @@ echo -e "\033[1;33mСоздание разделов на $DISK...\033[0m"
 # Создание разделов с помощью fdisk
 check_command "echo -e 'o\nn\np\n1\n\n+${EFI_PARTITION_SIZE}\nt\nef00\nn\np\n2\n\n\nw\n' | fdisk $DISK" "Не удалось создать разделы с помощью fdisk"
 
+# Задержка, чтобы разделы появились в системе
+sleep 2
+
 # === Определение разделов ===
 if [[ $DISK =~ "nvme" ]]; then
     EFI_PART="${DISK}p1"
@@ -104,6 +120,14 @@ if [[ $DISK =~ "nvme" ]]; then
 else
     EFI_PART="${DISK}1"
     ROOT_PART="${DISK}2"
+fi
+
+# Проверка существования разделов
+if [ ! -b "$EFI_PART" ]; then
+  error_handler "Раздел EFI $EFI_PART не найден"
+fi
+if [ ! -b "$ROOT_PART" ]; then
+  error_handler "Корневой раздел $ROOT_PART не найден"
 fi
 
 # === Форматирование разделов ===
