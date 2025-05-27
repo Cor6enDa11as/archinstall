@@ -98,9 +98,15 @@ if [ ! -b "$DISK" ]; then
   error_handler "Диск $DISK не найден"
 fi
 
-# === Проверка, не смонтирован ли диск ===
+# === Размонтирование диска, если он смонтирован ===
 if mount | grep -q "$DISK"; then
-  error_handler "Диск $DISK смонтирован. Размонтируйте его перед продолжением."
+  echo -e "\033[1;33mДиск $DISK смонтирован. Размонтирую его...\033[0m"
+  umount $DISK 2>/dev/null
+  if [ $? -ne 0 ]; then
+    echo -e "\033[1;31mНе удалось размонтировать диск $DISK. Пожалуйста, размонтируйте его вручную и запустите скрипт снова.\033[0m"
+    exit 1
+  fi
+  echo -e "\033[1;32mДиск $DISK успешно размонтирован.\033[0m"
 fi
 
 # === Разметка диска ===
@@ -226,7 +232,7 @@ check_command "arch-chroot /mnt /bin/bash -c '
   echo "$USERNAME:$USER_PASSWORD" | chpasswd
 
   # Sudo
-  echo "%wheel ALL=(ALL) ALL" >> /etc/sudoers
+  echo "%wheel ALL=$ALL$ ALL" >> /etc/sudoers
 
   # Включение NetworkManager
   systemctl enable NetworkManager
