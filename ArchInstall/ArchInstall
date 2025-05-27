@@ -6,16 +6,6 @@ setfont cyr-sun16 2>/dev/null
 echo -e "\033[1;33mУстановка\033[0m"
 
 
-
-#!/bin/bash
-
-# === Настройка шрифта консоли для кириллицы (в начале скрипта) ===
-echo -e "\n\033[1;32m=== Настройка шрифта консоли для кириллицы ===\033[0m"
-echo -e "\033[1;33mУстановка шрифта cyr-sun16 для консоли...\033[0m"
-setfont cyr-sun16 2>/dev/null
-loadkeys ru
-echo -e "\033[1;32mШрифт установлен. После перезагрузки консоль будет отображать кириллицу.\033[0m"
-
 # === Переменные ===
 # Файловая система (ext4 или btrfs)
 FILESYSTEM=""
@@ -205,7 +195,7 @@ if [ -d /sys/firmware/efi/ ]; then
 fi
 
 # === Установка базовой системы ===
-check_command "pacstrap /mnt base linux linux-firmware vim networkmanager dhcpcd kde-plasma-desktop konsole firefox firefox-i18n-ru ttf-liberation noto-fonts-cjk noto-fonts-emoji" "Не удалось установить базовую систему и KDE Plasma"
+check_command "pacstrap /mnt base linux linux-firmware vim networkmanager dhcpcd plasma-desktop konsole firefox firefox-i18n-ru ttf-liberation noto-fonts-cjk noto-fonts-emoji" "Не удалось установить базовую систему и KDE Plasma"
 
 # === Генерация fstab ===
 check_command "genfstab -U /mnt >> /mnt/etc/fstab" "Не удалось сгенерировать fstab"
