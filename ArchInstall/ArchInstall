@@ -141,9 +141,9 @@ fi
 
 # === Форматирование разделов ===
 if [ -d /sys/firmware/efi/ ]; then
-    check_command "mkfs.vfat -F32 $EFI_PART" "Не удалось отформатировать раздел EFI"
+    check_command "mkfs.vfat -F32 -f $EFI_PART" "Не удалось отформатировать раздел EFI"
 fi
-check_command "mkfs.$FILESYSTEM $ROOT_PART" "Не удалось отформатировать корневой раздел"
+check_command "mkfs.$FILESYSTEM -f $ROOT_PART" "Не удалось отформатировать корневой раздел"
 
 # === Монтирование разделов ===
 if [ "$FILESYSTEM" == "btrfs" ]; then
@@ -188,7 +188,7 @@ if [ -d /sys/firmware/efi/ ]; then
 fi
 
 # === Установка базовой системы ===
-check_command "pacstrap /mnt base linux linux-firmware vim networkmanager dhcpcd kde-plasma-desktop konsole firefox firefox-i18n-ru ttf-liberation noto-fonts-cjk noto-fonts-emoji" "Не удалось установить базовую систему и KDE Plasma"
+check_command "pacstrap /mnt base linux linux-firmware vim networkmanager dhcpcd plasma-desktop konsole firefox firefox-i18n-ru ttf-liberation noto-fonts-cjk noto-fonts-emoji" "Не удалось установить базовую систему и KDE Plasma"
 
 # === Генерация fstab ===
 check_command "genfstab -U /mnt >> /mnt/etc/fstab" "Не удалось сгенерировать fstab"
