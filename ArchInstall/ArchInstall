@@ -107,14 +107,14 @@ fi
 echo -e "\n\033[1;32m=== РАЗМЕТКА ДИСКА ===\033[0m"
 echo -e "\033[1;33mСоздание разделов на $DISK...\033[0m"
 
-# Создание разделов с помощью fdisk
-echo -e "o\nn\np\n1\n\n+${EFI_PARTITION_SIZE}\nt\nef00\nn\np\n2\n\n\nw\n" | fdisk $DISK
-if [ $? -ne 0 ]; then
-  error_handler "Не удалось создать разделы с помощью fdisk"
-fi
+# Создание разделов с помощью parted
+check_command "parted -s $DISK mklabel msdos" "Не удалось создать таблицу разделов"
+check_command "parted -s $DISK mkpart primary fat32 1MiB ${EFI_PARTITION_SIZE}" "Не удалось создать раздел EFI"
+check_command "parted -s $DISK set 1 boot on" "Не удалось установить флаг boot на раздел EFI"
+check_command "parted -s $DISK mkpart primary ext4 ${EFI_PARTITION_SIZE} 100%" "Не удалось создать корневой раздел"
 
 # Вывод таблицы разделов
-echo -e "\n\033[1;33mТаблица разделов после fdisk:\033[0m"
+echo -e "\n\033[1;33mТаблица разделов после parted:\033[0m"
 fdisk -l $DISK
 
 # Задержка, чтобы разделы появились в системе
@@ -141,7 +141,7 @@ fi
 
 # === Форматирование разделов ===
 if [ -d /sys/firmware/efi/ ]; then
-    check_command "mkfs.vfat -F32 -f $EFI_PART" "Не удалось отформатировать раздел EFI"
+    check_command "mkfs.vfat -F32 $EFI_PART" "Не удалось отформатировать раздел EFI"
 fi
 check_command "mkfs.$FILESYSTEM -f $ROOT_PART" "Не удалось отформатировать корневой раздел"
 
