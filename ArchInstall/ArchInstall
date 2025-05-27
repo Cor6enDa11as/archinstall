@@ -210,19 +210,13 @@ check_command "arch-chroot /mnt /bin/bash -c '
   hwclock --systohc
 
 # Русская локализация
-  LOCALE_UTF8=\"ru_RU.UTF-8 UTF-8\"
-  LOCALE_ISO=\"ru_RU ISO-8859-5\"
-  LOCALE_US=\"en_US.UTF-8 UTF-8\"
-  LANG_RU=\"LANG=ru_RU.UTF-8\"
-  KEYMAP_RU=\"KEYMAP=ru\"
-
-  printf \"%s\\n\" \"$LOCALE_UTF8\" | tee /etc/locale.gen
-  echo \"$LOCALE_ISO\" >> /etc/locale.gen
-  echo \"$LOCALE_US\" >> /etc/locale.gen
+  echo 'ru_RU.UTF-8 UTF-8' > /etc/locale.gen
+  echo 'ru_RU ISO-8859-5' >> /etc/locale.gen
+  echo 'en_US.UTF-8 UTF-8' >> /etc/locale.gen
   locale-gen
+  echo 'LANG=ru_RU.UTF-8' > /etc/locale.conf
+  echo 'KEYMAP=ru' > /etc/vconsole.conf
 
-  printf \"%s\\n\" \"$LANG_RU\" | tee /etc/locale.conf
-  printf \"%s\\n\" \"$KEYMAP_RU\" | tee /etc/vconsole.conf
 
 
   # Имя хоста
@@ -234,14 +228,14 @@ check_command "arch-chroot /mnt /bin/bash -c '
   mkinitcpio -P
 
   # Пароль root
-  echo "root:$ROOT_PASSWORD" | chpasswd
+  echo 'root:$ROOT_PASSWORD' | chpasswd
 
   # Создание пользователя
   useradd -m -g users -G wheel -s /bin/bash $USERNAME
-  echo "$USERNAME:$USER_PASSWORD" | chpasswd
+  echo '$USERNAME:$USER_PASSWORD' | chpasswd
 
   # Sudo
-  echo "%wheel ALL=$ALL$ ALL" >> /etc/sudoers
+  echo '%wheel ALL=$ALL$ ALL' >> /etc/sudoers
 
   # Включение NetworkManager
   systemctl enable NetworkManager
