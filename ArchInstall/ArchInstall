@@ -204,7 +204,7 @@ check_command "genfstab -U /mnt >> /mnt/etc/fstab" "Не удалось сген
 select_timezone
 
 # === Chroot-настройка ===
-check_command "arch-chroot /mnt /bin/bash -c '
+check_command "arch-chroot /mnt /bin/bash -c "
   # Выбор часового пояса
   ln -sf /usr/share/zoneinfo/$TIMEZONE /etc/localtime
   hwclock --systohc
@@ -242,21 +242,21 @@ check_command "arch-chroot /mnt /bin/bash -c '
 
   # Включение sddm (Display Manager для KDE)
   systemctl enable sddm
-'" "Не удалось выполнить chroot-настройку"
+"" "Не удалось выполнить chroot-настройку"
 
 # === Установка GRUB ===
 if [ -d /sys/firmware/efi/ ]; then
   # EFI
-  check_command "arch-chroot /mnt /bin/bash -c '
+  check_command "arch-chroot /mnt /bin/bash -c "
     grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB
     grub-mkconfig -o /boot/grub/grub.cfg
-  '" "Не удалось установить GRUB (EFI)"
+  "" "Не удалось установить GRUB (EFI)"
 else
   # BIOS
-  check_command "arch-chroot /mnt /bin/bash -c '
+  check_command "arch-chroot /mnt /bin/bash -c "
     grub-install $DISK
     grub-mkconfig -o /boot/grub/grub.cfg
-  '" "Не удалось установить GRUB (BIOS)"
+  "" "Не удалось установить GRUB (BIOS)"
 fi
 
 # === Размонтирование разделов ===
