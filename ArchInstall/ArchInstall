@@ -213,13 +213,13 @@ check_command "genfstab -U /mnt >> /mnt/etc/fstab" "Не удалось сген
 
 
 # === Chroot-настройка ===
-check_command "arch-chroot /mnt /bin/bash -c 'ln -sf /usr/share/zoneinfo/$TIMEZONE /etc/localtime'" "Не удалось установить часовой пояс"
+check_command "arch-chroot /mnt /bin/bash -c \"ln -sf /usr/share/zoneinfo/\$TIMEZONE /etc/localtime\"" "Не удалось установить часовой пояс"
 check_command "arch-chroot /mnt /bin/bash -c 'hwclock --systohc'" "Не удалось установить аппаратные часы"
 
 # Раскомментируем строки для русской локали в /etc/locale.gen
-check_command "arch-chroot /mnt /bin/bash -c 'sed -i \"s/#ru_RU.UTF-8 UTF-8/ru_RU.UTF-8 UTF-8/g\" /etc/locale.gen'" "Не удалось раскомментировать ru_RU.UTF-8"
-check_command "arch-chroot /mnt /bin/bash -c 'sed -i \"s/#ru_RU ISO-8859-5/ru_RU ISO-8859-5/g\" /etc/locale.gen'" "Не удалось раскомментировать ru_RU ISO-8859-5"
-check_command "arch-chroot /mnt /bin/bash -c 'sed -i \"s/#en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/g\" /etc/locale.gen'" "Не удалось раскомментировать en_US.UTF-8"
+check_command "arch-chroot /mnt /bin/bash -c \"sed -i 's/#ru_RU.UTF-8 UTF-8/ru_RU.UTF-8 UTF-8/g' /etc/locale.gen\"" "Не удалось раскомментировать ru_RU.UTF-8"
+check_command "arch-chroot /mnt /bin/bash -c \"sed -i 's/#ru_RU ISO-8859-5/ru_RU ISO-8859-5/g' /etc/locale.gen\"" "Не удалось раскомментировать ru_RU ISO-8859-5"
+check_command "arch-chroot /mnt /bin/bash -c \"sed -i 's/#en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/g' /etc/locale.gen\"" "Не удалось раскомментировать en_US.UTF-8"
 
 check_command "arch-chroot /mnt /bin/bash -c 'locale-gen'" "Не удалось сгенерировать локали"
 check_command "arch-chroot /mnt /bin/bash -c 'echo LANG=ru_RU.UTF-8' > /mnt/etc/locale.conf" "Не удалось установить LANG"
@@ -234,10 +234,10 @@ check_command "arch-chroot /mnt /bin/bash -c 'echo \"$USERNAME:$USER_PASSWORD\" 
 check_command "arch-chroot /mnt /bin/bash -c 'echo \"%wheel ALL=(ALL) ALL\" >> /etc/sudoers'" "Не удалось настроить sudo"
 
 # Добавление multilib репозитория
-check_command "arch-chroot /mnt /bin/bash -c 'sed -i \"/$$multilib$$/,/Include/ s/^#//\" /etc/pacman.conf'" "Не удалось включить multilib"
+check_command "arch-chroot /mnt /bin/bash -c \"sed -i '/\$$multilib\$$/,/Include/ s/^#//' /etc/pacman.conf\"" "Не удалось включить multilib"
 
 # Добавление опций Color и ILoveCandy в pacman.conf
-check_command "arch-chroot /mnt /bin/bash -c 'sed -i \"/$$options$$/a Color\\nILoveCandy\" /etc/pacman.conf'" "Не удалось добавить опции Color и ILoveCandy"
+check_command "arch-chroot /mnt /bin/bash -c \"sed -i '/\$$options\$$/a Color\\nILoveCandy' /etc/pacman.conf\"" "Не удалось добавить опции Color и ILoveCandy"
 
 # Проверка наличия необходимых пакетов для GRUB
 if [ -d /sys/firmware/efi/ ]; then
