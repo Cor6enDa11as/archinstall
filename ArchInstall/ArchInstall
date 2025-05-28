@@ -212,61 +212,103 @@ check_command "pacstrap /mnt base linux linux-firmware vim networkmanager dhcpcd
 check_command "genfstab -U /mnt >> /mnt/etc/fstab" "Не удалось сгенерировать fstab"
 
 
+
 # === Chroot-настройка ===
-check_command "arch-chroot /mnt /bin/bash -c \"ln -sf /usr/share/zoneinfo/\$TIMEZONE /etc/localtime\"" "Не удалось установить часовой пояс"
-check_command "arch-chroot /mnt /bin/bash -c 'hwclock --systohc'" "Не удалось установить аппаратные часы"
+arch-chroot /mnt /bin/bash -c "ln -sf /usr/share/zoneinfo/$TIMEZONE /etc/localtime"
+echo "OK: Не удалось установить часовой пояс" || exit 1
+
+arch-chroot /mnt /bin/bash -c "hwclock --systohc"
+echo "OK: Не удалось установить аппаратные часы" || exit 1
 
 # Раскомментируем строки для русской локали в /etc/locale.gen
-check_command "arch-chroot /mnt /bin/bash -c \"sed -i 's/#ru_RU.UTF-8 UTF-8/ru_RU.UTF-8 UTF-8/g' /etc/locale.gen\"" "Не удалось раскомментировать ru_RU.UTF-8"
-check_command "arch-chroot /mnt /bin/bash -c \"sed -i 's/#ru_RU ISO-8859-5/ru_RU ISO-8859-5/g' /etc/locale.gen\"" "Не удалось раскомментировать ru_RU ISO-8859-5"
-check_command "arch-chroot /mnt /bin/bash -c \"sed -i 's/#en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/g' /etc/locale.gen\"" "Не удалось раскомментировать en_US.UTF-8"
+arch-chroot /mnt /bin/bash -c "sed -i 's/#ru_RU.UTF-8 UTF-8/ru_RU.UTF-8 UTF-8/g' /etc/locale.gen"
+echo "OK: Не удалось раскомментировать ru_RU.UTF-8" || exit 1
 
-check_command "arch-chroot /mnt /bin/bash -c 'locale-gen'" "Не удалось сгенерировать локали"
-check_command "arch-chroot /mnt /bin/bash -c 'echo LANG=ru_RU.UTF-8' > /mnt/etc/locale.conf" "Не удалось установить LANG"
-check_command "arch-chroot /mnt /bin/bash -c 'echo KEYMAP=ru' > /mnt/etc/vconsole.conf" "Не удалось установить KEYMAP"
-check_command "arch-chroot /mnt /bin/bash -c 'echo \"$HOSTNAME\" > /etc/hostname'" "Не удалось установить имя хоста"
-check_command "arch-chroot /mnt /bin/bash -c 'echo \"127.0.0.1 localhost\" >> /etc/hosts'" "Не удалось добавить localhost в hosts"
-check_command "arch-chroot /mnt /bin/bash -c 'echo \"::1       localhost\" >> /etc/hosts'" "Не удалось добавить localhost в hosts (IPv6)"
-check_command "arch-chroot /mnt /bin/bash -c 'mkinitcpio -P'" "Не удалось создать initramfs"
-check_command "arch-chroot /mnt /bin/bash -c 'echo \"root:$ROOT_PASSWORD\" | chpasswd'" "Не удалось установить пароль root"
-check_command "arch-chroot /mnt /bin/bash -c 'useradd -m -g users -G wheel -s /bin/bash \"$USERNAME\"'" "Не удалось создать пользователя"
-check_command "arch-chroot /mnt /bin/bash -c 'echo \"$USERNAME:$USER_PASSWORD\" | chpasswd'" "Не удалось установить пароль пользователя"
-check_command "arch-chroot /mnt /bin/bash -c 'echo \"%wheel ALL=(ALL) ALL\" >> /etc/sudoers'" "Не удалось настроить sudo"
+arch-chroot /mnt /bin/bash -c "sed -i 's/#ru_RU ISO-8859-5/ru_RU ISO-8859-5/g' /etc/locale.gen"
+echo "OK: Не удалось раскомментировать ru_RU ISO-8859-5" || exit 1
 
-# Добавление multilib репозитория
-check_command "arch-chroot /mnt /bin/bash -c \"sed -i '/\$$multilib\$$/,/Include/ s/^#//' /etc/pacman.conf\"" "Не удалось включить multilib"
+arch-chroot /mnt /bin/bash -c "sed -i 's/#en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/g' /etc/locale.gen"
+echo "OK: Не удалось раскомментировать en_US.UTF-8" || exit 1
 
-# Добавление опций Color и ILoveCandy в pacman.conf
-check_command "arch-chroot /mnt /bin/bash -c \"sed -i '/\$$options\$$/a Color\\nILoveCandy' /etc/pacman.conf\"" "Не удалось добавить опции Color и ILoveCandy"
+arch-chroot /mnt /bin/bash -c "locale-gen"
+echo "OK: Не удалось сгенерировать локали" || exit 1
+
+arch-chroot /mnt /bin/bash -c "echo LANG=ru_RU.UTF-8 > /mnt/etc/locale.conf"
+echo "OK: Не удалось установить LANG" || exit 1
+
+arch-chroot /mnt /bin/bash -c "echo KEYMAP=ru > /mnt/etc/vconsole.conf"
+echo "OK: Не удалось установить KEYMAP" || exit 1
+
+# Добавляем FONT в vconsole.conf
+arch-chroot /mnt /bin/bash -c "echo 'FONT=cyr-sun16' >> /etc/vconsole.conf"
+echo "OK: Не удалось установить FONT" || exit 1
+
+arch-chroot /mnt /bin/bash -c "echo \"$HOSTNAME\" > /etc/hostname"
+echo "OK: Не удалось установить имя хоста" || exit 1
+
+arch-chroot /mnt /bin/bash -c "echo \"127.0.0.1 localhost\" >> /etc/hosts"
+echo "OK: Не удалось добавить localhost в hosts" || exit 1
+
+arch-chroot /mnt /bin/bash -c "echo \"::1       localhost\" >> /etc/hosts"
+echo "OK: Не удалось добавить localhost в hosts (IPv6)" || exit 1
+
+arch-chroot /mnt /bin/bash -c "mkinitcpio -P"
+echo "OK: Не удалось создать initramfs" || exit 1
+
+arch-chroot /mnt /bin/bash -c "echo \"root:$ROOT_PASSWORD\" | chpasswd"
+echo "OK: Не удалось установить пароль root" || exit 1
+
+# Создаем пользователя
+arch-chroot /mnt /bin/bash -c "useradd -m -G wheel -s /bin/bash \"$USERNAME\""
+echo "OK: Не удалось создать пользователя" || exit 1
+
+arch-chroot /mnt /bin/bash -c "echo \"$USERNAME:$USER_PASSWORD\" | chpasswd"
+echo "OK: Не удалось установить пароль пользователя" || exit 1
+
+arch-chroot /mnt /bin/bash -c "echo \"%wheel ALL=(ALL) ALL\" >> /etc/sudoers"
+echo "OK: Не удалось настроить sudo" || exit 1
+
+# Включаем multilib репозиторий
+arch-chroot /mnt /bin/bash -c "sed -i '/\$$multilib\$$/,/Include/ s/^#//' /etc/pacman.conf"
+echo "OK: Не удалось включить multilib" || exit 1
+
+# Добавляем опции Color и ILoveCandy в pacman.conf
+arch-chroot /mnt /bin/bash -c "sed -i '/\$$options\$$/a Color\\nILoveCandy' /etc/pacman.conf"
+echo "OK: Не удалось добавить опции Color и ILoveCandy" || exit 1
 
 # Проверка наличия необходимых пакетов для GRUB
 if [ -d /sys/firmware/efi/ ]; then
     # EFI
-    check_command "arch-chroot /mnt /bin/bash -c 'pacman -S --noconfirm efibootmgr dosfstools'" "Не удалось установить efibootmgr и dosfstools"
-    check_command "arch-chroot /mnt /bin/bash -c 'grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB'" "Не удалось установить GRUB (EFI)"
-    check_command "arch-chroot /mnt /bin/bash -c 'grub-mkconfig -o /boot/grub/grub.cfg'" "Не удалось сгенерировать grub.cfg (EFI)"
+    arch-chroot /mnt /bin/bash -c "pacman -S --noconfirm efibootmgr dosfstools"
+    echo "OK: Не удалось установить efibootmgr и dosfstools" || exit 1
+    arch-chroot /mnt /bin/bash -c "grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB"
+    echo "OK: Не удалось установить GRUB (EFI)" || exit 1
+    arch-chroot /mnt /bin/bash -c "grub-mkconfig -o /boot/grub/grub.cfg"
+    echo "OK: Не удалось сгенерировать grub.cfg (EFI)" || exit 1
 else
     # BIOS
-    check_command "arch-chroot /mnt /bin/bash -c 'grub-install $DISK'" "Не удалось установить GRUB (BIOS)"
-    check_command "arch-chroot /mnt /bin/bash -c 'grub-mkconfig -o /boot/grub/grub.cfg'" "Не удалось сгенерировать grub.cfg (BIOS)"
+    arch-chroot /mnt /bin/bash -c "grub-install $DISK"
+    echo "OK: Не удалось установить GRUB (BIOS)" || exit 1
+    arch-chroot /mnt /bin/bash -c "grub-mkconfig -o /boot/grub/grub.cfg"
+    echo "OK: Не удалось сгенерировать grub.cfg (BIOS)" || exit 1
 fi
 
-check_command "arch-chroot /mnt /bin/bash -c 'systemctl enable NetworkManager'" "Не удалось включить NetworkManager"
-check_command "arch-chroot /mnt /bin/bash -c 'systemctl enable sddm'" "Не удалось включить sddm"
+arch-chroot /mnt /bin/bash -c "systemctl enable NetworkManager"
+echo "OK: Не удалось включить NetworkManager" || exit 1
 
-# === Размонтирование разделов ===
-echo -e "\n\033[1;32m=== Размонтирование разделов ===\033[0m"
-if [ -d /sys/firmware/efi/ ]; then
-    check_command "umount /mnt/boot/efi" "Не удалось размонтировать раздел EFI"
-fi
-check_command "umount /mnt/home" "Не удалось размонтировать раздел /home"
-check_command "umount /mnt/var" "Не удалось размонтировать раздел /var"
-check_command "umount /mnt/.snapshots" "Не удалось размонтировать раздел /.snapshots"
-check_command "umount /mnt/log" "Не удалось размонтировать раздел /log"
-check_command "umount /mnt/pkg" "Не удалось размонтировать раздел /pkg"
-check_command "umount /mnt" "Не удалось размонтировать корневой раздел"
+arch-chroot /mnt /bin/bash -c "systemctl enable sddm"
+echo "OK: Не удалось включить sddm" || exit 1
+
+# === Выход из chroot ===
+echo "Выход из chroot..."
+arch-chroot /mnt /bin/bash -c "exit"
+echo "OK: Не удалось выйти из chroot" || exit 1
+
+# === Размонтирование ===
+echo "Размонтирование /mnt..."
+umount -R /mnt
+echo "OK: Не удалось размонтировать /mnt" || exit 1
 
 # === Перезагрузка ===
-echo -e "\n\033[1;32m=== Перезагрузка системы ===\033[0m"
-echo -e "\033[1;33mПерезагрузка...\033[0m"
+echo "Перезагрузка системы..."
 reboot
