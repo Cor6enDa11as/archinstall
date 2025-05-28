@@ -212,67 +212,37 @@ check_command "pacstrap /mnt base linux linux-firmware vim networkmanager dhcpcd
 check_command "genfstab -U /mnt >> /mnt/etc/fstab" "Не удалось сгенерировать fstab"
 
 
-# Выполнение chroot-настройки с проверкой
-check_command "arch-chroot /mnt /bin/bash -e <<'CHROOT_EOF'
-#!/bin/bash
-set -e # Немедленный выход при ошибке
+CHROOT_COMMANDS=(
+  "ln -sf /usr/share/zoneinfo/$TIMEZONE /etc/localtime"
+  "hwclock --systohc"
+  "echo \"ru_RU.UTF-8 UTF-8\" > /etc/locale.gen"
+  "echo \"ru_RU ISO-8859-5\" >> /etc/locale.gen"
+  "echo \"en_US.UTF-8 UTF-8\" >> /etc/locale.gen"
+  "locale-gen"
+  "echo \"LANG=ru_RU.UTF-8\" > /etc/locale.conf"
+  "echo \"KEYMAP=ru\" > /etc/vconsole.conf"
+  "echo $HOSTNAME > /etc/hostname"
+  "echo \"127.0.0.1 localhost\" >> /etc/hosts"
+  "echo \"::1       localhost\" >> /etc/hosts"
+  "mkinitcpio -P"
+  "echo \"root:$ROOT_PASSWORD\" | chpasswd"
+  "useradd -m -g users -G wheel -s /bin/bash $USERNAME"
+  "echo \"$USERNAME:$USER_PASSWORD\" | chpasswd"
+  "echo \"%wheel ALL=(ALL) ALL\" >> /etc/sudoers"
+  "if [ -d /sys/firmware/efi/ ]; then grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB; grub-mkconfig -o /boot/grub/grub.cfg; else grub-install $DISK; grub-mkconfig -o /boot/grub/grub.cfg; fi"
+  "systemctl enable NetworkManager"
+  "systemctl enable sddm"
+)
 
-# Настройка времени и локализации
-echo '[1/8] Настройка времени и локализации...'
-ln -sf \"/usr/share/zoneinfo/${TIMEZONE}\" /etc/localtime
-hwclock --systohc
-echo \"ru_RU.UTF-8 UTF-8\" > /etc/locale.gen
-echo \"en_US.UTF-8 UTF-8\" >> /etc/locale.gen
-locale-gen
-echo \"LANG=ru_RU.UTF-8\" > /etc/locale.conf
-echo \"KEYMAP=ru\" > /etc/vconsole.conf
+for COMMAND in "${CHROOT_COMMANDS[@]}"; do
+  check_command "arch-chroot /mnt /bin/bash -c \"$COMMAND\"" "Не удалось выполнить команду: $COMMAND"
+done
 
-# Настройка сети
-echo '[2/8] Настройка сети...'
-echo \"${HOSTNAME}\" > /etc/hostname
-cat > /etc/hosts <<HOSTS_EOF
-127.0.0.1   localhost
-::1         localhost
-127.0.1.1   ${HOSTNAME}.localdomain ${HOSTNAME}
-HOSTS_EOF
+# === Включение NetworkManager и sddm ===
+echo -e "\n\033[1;32m=== Включение NetworkManager и sddm ===\033[0m"
+check_command "systemctl enable NetworkManager" "Не удалось включить NetworkManager"
+check_command "systemctl enable sddm" "Не удалось включить sddm"
 
-# Initramfs
-echo '[3/8] Генерация initramfs...'
-mkinitcpio -P
-
-# Пароль root
-echo '[4/8] Установка пароля root...'
-echo \"root:${ROOT_PASSWORD}\" | chpasswd
-
-# Создание пользователя
-echo '[5/8] Создание пользователя ${USERNAME}...'
-useradd -m -G wheel -s /bin/bash \"${USERNAME}\"
-echo \"${USERNAME}:${USER_PASSWORD}\" | chpasswd
-
-# Настройка sudo
-echo '[6/8] Настройка прав sudo...'
-echo '%wheel ALL=(ALL) ALL' >> /etc/sudoers
-sed -i 's/^# %wheel/%wheel/' /etc/sudoers 2>/dev/null || true
-
-# Установка загрузчика
-echo '[7/8] Установка GRUB...'
-if [ -d /sys/firmware/efi/ ]; then
-  grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=GRUB
-else
-  grub-install \"${DISK}\"
-fi
-grub-mkconfig -o /boot/grub/grub.cfg
-
-# Включение сервисов
-echo '[8/8] Включение необходимых сервисов...'
-systemctl enable NetworkManager
-systemctl enable sddm
-
-echo 'Chroot-настройка успешно завершена!'
-CHROOT_EOF
-" "Ошибка выполнения chroot-настройки"
-
-echo "Этап chroot-настройки успешно завершен"
 # === Размонтирование разделов ===
 echo -e "\n\033[1;32m=== Размонтирование разделов ===\033[0m"
 if [ -d /sys/firmware/efi/ ]; then
