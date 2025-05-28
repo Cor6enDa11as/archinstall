@@ -194,72 +194,85 @@ if [ -d /sys/firmware/efi/ ]; then
   check_command "mount $EFI_PART /mnt/boot/efi" "Не удалось смонтировать раздел EFI"
 fi
 
+# === Запрос имени пользователя, пароля и имени хоста ===
+read -p "Введите имя пользователя: " USERNAME
+read -s -p "Введите пароль пользователя: " USER_PASSWORD
+echo    # Добавляем перевод строки после ввода пароля
+read -s -p "Введите пароль root: " ROOT_PASSWORD
+echo    # Добавляем перевод строки после ввода пароля
+read -p "Введите имя хоста: " HOSTNAME
+
+# === Выбор часового пояса ===
+select_timezone
+
 # === Установка базовой системы ===
 check_command "pacstrap /mnt base linux linux-firmware vim networkmanager dhcpcd plasma-desktop konsole firefox firefox-i18n-ru ttf-liberation noto-fonts-cjk noto-fonts-emoji" "Не удалось установить базовую систему и KDE Plasma"
 
 # === Генерация fstab ===
 check_command "genfstab -U /mnt >> /mnt/etc/fstab" "Не удалось сгенерировать fstab"
 
-# === Выбор часового пояса ===
-select_timezone
 
-# === Chroot-настройка ===
-# Переменные должны быть определены заранее:
-# TIMEZONE, HOSTNAME, ROOT_PASSWORD, USERNAME, USER_PASSWORD, DISK
+# Выполнение chroot-настройки с проверкой
+check_command "arch-chroot /mnt /bin/bash -e <<'CHROOT_EOF'
+#!/bin/bash
+set -e # Немедленный выход при ошибке
 
-CHROOT_COMMANDS=$(cat <<CHROOT_EOF
-  # Настройка времени
-  ln -sf "/usr/share/zoneinfo/${TIMEZONE}" /etc/localtime
-  hwclock --systohc
+# Настройка времени и локализации
+echo '[1/8] Настройка времени и локализации...'
+ln -sf \"/usr/share/zoneinfo/${TIMEZONE}\" /etc/localtime
+hwclock --systohc
+echo \"ru_RU.UTF-8 UTF-8\" > /etc/locale.gen
+echo \"en_US.UTF-8 UTF-8\" >> /etc/locale.gen
+locale-gen
+echo \"LANG=ru_RU.UTF-8\" > /etc/locale.conf
+echo \"KEYMAP=ru\" > /etc/vconsole.conf
 
-  # Локализация
-  echo "ru_RU.UTF-8 UTF-8" > /etc/locale.gen
-  echo "ru_RU ISO-8859-5" >> /etc/locale.gen
-  echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
-  locale-gen
-  echo "LANG=ru_RU.UTF-8" > /etc/locale.conf
-  echo "KEYMAP=ru" > /etc/vconsole.conf
+# Настройка сети
+echo '[2/8] Настройка сети...'
+echo \"${HOSTNAME}\" > /etc/hostname
+cat > /etc/hosts <<HOSTS_EOF
+127.0.0.1   localhost
+::1         localhost
+127.0.1.1   ${HOSTNAME}.localdomain ${HOSTNAME}
+HOSTS_EOF
 
-  # Настройка сети
-  echo "${HOSTNAME}" > /etc/hostname
-  echo "127.0.0.1 localhost" >> /etc/hosts
-  echo "::1       localhost" >> /etc/hosts
-  echo "127.0.1.1 ${HOSTNAME}.localdomain ${HOSTNAME}" >> /etc/hosts
+# Initramfs
+echo '[3/8] Генерация initramfs...'
+mkinitcpio -P
 
-  # Initramfs
-  mkinitcpio -P
+# Пароль root
+echo '[4/8] Установка пароля root...'
+echo \"root:${ROOT_PASSWORD}\" | chpasswd
 
-  # Пароли
-  echo "root:${ROOT_PASSWORD}" | chpasswd
+# Создание пользователя
+echo '[5/8] Создание пользователя ${USERNAME}...'
+useradd -m -G wheel -s /bin/bash \"${USERNAME}\"
+echo \"${USERNAME}:${USER_PASSWORD}\" | chpasswd
 
-  # Пользователь
-  useradd -m -G wheel -s /bin/bash "${USERNAME}"
-  echo "${USERNAME}:${USER_PASSWORD}" | chpasswd
+# Настройка sudo
+echo '[6/8] Настройка прав sudo...'
+echo '%wheel ALL=(ALL) ALL' >> /etc/sudoers
+sed -i 's/^# %wheel/%wheel/' /etc/sudoers 2>/dev/null || true
 
-  # Sudo
-  echo "%wheel ALL=(ALL) ALL" >> /etc/sudoers
-  sed -i 's/^# %wheel/%wheel/' /etc/sudoers
+# Установка загрузчика
+echo '[7/8] Установка GRUB...'
+if [ -d /sys/firmware/efi/ ]; then
+  grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=GRUB
+else
+  grub-install \"${DISK}\"
+fi
+grub-mkconfig -o /boot/grub/grub.cfg
 
-  # Загрузчик
-  if [ -d /sys/firmware/efi/ ]; then
-    # EFI-режим
-    grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=GRUB
-  else
-    # BIOS-режим
-    grub-install "${DISK}"
-  fi
-  grub-mkconfig -o /boot/grub/grub.cfg
+# Включение сервисов
+echo '[8/8] Включение необходимых сервисов...'
+systemctl enable NetworkManager
+systemctl enable sddm
 
-  # Сервисы
-  systemctl enable NetworkManager
-  systemctl enable sddm
+echo 'Chroot-настройка успешно завершена!'
 CHROOT_EOF
-)
+" "Ошибка выполнения chroot-настройки"
 
-# Выполнение chroot с проверкой
-check_command "arch-chroot /mnt /bin/bash -e <<< \"${CHROOT_COMMANDS}\"" "Не удалось выполнить chroot-настройку"
-
-echo "Chroot-настройка успешно завершена!"
+echo "Этап chroot-настройки успешно завершен"
 # === Размонтирование разделов ===
 echo -e "\n\033[1;32m=== Размонтирование разделов ===\033[0m"
 if [ -d /sys/firmware/efi/ ]; then
