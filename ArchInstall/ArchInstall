@@ -213,53 +213,46 @@ check_command "genfstab -U /mnt >> /mnt/etc/fstab" "Не удалось сген
 
 
 # === Chroot-настройка ===
-CHROOT_COMMANDS=(
-  "ln -sf /usr/share/zoneinfo/%s /etc/localtime"
-  "hwclock --systohc"
-  "echo 'ru_RU.UTF-8 UTF-8' > /etc/locale.gen"
-  "echo 'ru_RU ISO-8859-5' > /etc/locale.gen"
-  "echo 'en_US.UTF-8 UTF-8' > /etc/locale.gen"
-  "locale-gen"
-  "echo 'LANG=ru_RU.UTF-8' > /etc/locale.conf"
-  "echo 'KEYMAP=ru' > /etc/vconsole.conf"
-  "echo %s > /etc/hostname"
-  "echo '127.0.0.1 localhost' >> /etc/hosts"
-  "echo '::1       localhost' >> /etc/hosts"
-  "mkinitcpio -P"
-  "echo 'root:%s' | chpasswd"
-  "useradd -m -g users -G wheel -s /bin/bash %s"
-  "echo '%s:%s' | chpasswd"
-  "echo '%wheel ALL=(ALL) ALL' >> /etc/sudoers"
-  "if [ -d /sys/firmware/efi/ ]; then grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB; grub-mkconfig -o /boot/grub/grub.cfg; else grub-install %s; grub-mkconfig -o /boot/grub/grub.cfg; fi"
-  "systemctl enable NetworkManager"
-  "systemctl enable sddm"
-)
+check_command "arch-chroot /mnt /bin/bash -c 'ln -sf /usr/share/zoneinfo/$TIMEZONE /etc/localtime'" "Не удалось установить часовой пояс"
+check_command "arch-chroot /mnt /bin/bash -c 'hwclock --systohc'" "Не удалось установить аппаратные часы"
 
-# Форматируем и выполняем команды
-check_command "arch-chroot /mnt /bin/bash -c \"$(printf \"${CHROOT_COMMANDS[0]}\" \"$TIMEZONE\")\"" "Не удалось выполнить команду: установка часового пояса"
-check_command "arch-chroot /mnt /bin/bash -c \"${CHROOT_COMMANDS[1]}\"" "Не удалось выполнить команду: hwclock"
-check_command "arch-chroot /mnt /bin/bash -c \"${CHROOT_COMMANDS[2]}\"" "Не удалось выполнить команду: русская локализация (1)"
-check_command "arch-chroot /mnt /bin/bash -c \"${CHROOT_COMMANDS[3]}\"" "Не удалось выполнить команду: русская локализация (2)"
-check_command "arch-chroot /mnt /bin/bash -c \"${CHROOT_COMMANDS[4]}\"" "Не удалось выполнить команду: русская локализация (3)"
-check_command "arch-chroot /mnt /bin/bash -c \"${CHROOT_COMMANDS[5]}\"" "Не удалось выполнить команду: locale-gen"
-check_command "arch-chroot /mnt /bin/bash -c \"${CHROOT_COMMANDS[6]}\"" "Не удалось выполнить команду: LANG"
-check_command "arch-chroot /mnt /bin/bash -c \"${CHROOT_COMMANDS[7]}\"" "Не удалось выполнить команду: KEYMAP"
-check_command "arch-chroot /mnt /bin/bash -c \"$(printf \"${CHROOT_COMMANDS[8]}\" \"$HOSTNAME\")\"" "Не удалось выполнить команду: имя хоста"
-check_command "arch-chroot /mnt /bin/bash -c \"${CHROOT_COMMANDS[9]}\"" "Не удалось выполнить команду: hosts (1)"
-check_command "arch-chroot /mnt /bin/bash -c \"${CHROOT_COMMANDS[10]}\"" "Не удалось выполнить команду: hosts (2)"
-check_command "arch-chroot /mnt /bin/bash -c \"${CHROOT_COMMANDS[11]}\"" "Не удалось выполнить команду: mkinitcpio"
-check_command "arch-chroot /mnt /bin/bash -c \"$(printf \"${CHROOT_COMMANDS[12]}\" \"$ROOT_PASSWORD\")\"" "Не удалось выполнить команду: пароль root"
-check_command "arch-chroot /mnt /bin/bash -c \"$(printf \"${CHROOT_COMMANDS[13]}\" \"$USERNAME\")\"" "Не удалось выполнить команду: создание пользователя"
-check_command "arch-chroot /mnt /bin/bash -c \"$(printf \"${CHROOT_COMMANDS[14]}\" \"$USERNAME\" \"$USER_PASSWORD\")\"" "Не удалось выполнить команду: пароль пользователя"
-check_command "arch-chroot /mnt /bin/bash -c \"${CHROOT_COMMANDS[15]}\"" "Не удалось выполнить команду: sudo"
-check_command "arch-chroot /mnt /bin/bash -c \"$(printf \"${CHROOT_COMMANDS[16]}\" \"$DISK\")\"" "Не удалось выполнить команду: установка grub"
-check_command "arch-chroot /mnt /bin/bash -c \"${CHROOT_COMMANDS[17]}\"" "Не удалось выполнить команду: NetworkManager"
-check_command "arch-chroot /mnt /bin/bash -c \"${CHROOT_COMMANDS[18]}\"" "Не удалось выполнить команду: sddm"
+# Раскомментируем строки для русской локали в /etc/locale.gen
+check_command "arch-chroot /mnt /bin/bash -c 'sed -i \"s/#ru_RU.UTF-8 UTF-8/ru_RU.UTF-8 UTF-8/g\" /etc/locale.gen'" "Не удалось раскомментировать ru_RU.UTF-8"
+check_command "arch-chroot /mnt /bin/bash -c 'sed -i \"s/#ru_RU ISO-8859-5/ru_RU ISO-8859-5/g\" /etc/locale.gen'" "Не удалось раскомментировать ru_RU ISO-8859-5"
+check_command "arch-chroot /mnt /bin/bash -c 'sed -i \"s/#en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/g\" /etc/locale.gen'" "Не удалось раскомментировать en_US.UTF-8"
 
-# === Включение NetworkManager и sddm ===
-echo -e "\n\033[1;32m=== Включение NetworkManager и sddm ===\033[0m"
-check_command "systemctl enable NetworkManager" "Не удалось включить NetworkManager"
-check_command "systemctl enable sddm" "Не удалось включить sddm"
+check_command "arch-chroot /mnt /bin/bash -c 'locale-gen'" "Не удалось сгенерировать локали"
+check_command "arch-chroot /mnt /bin/bash -c 'echo LANG=ru_RU.UTF-8' > /mnt/etc/locale.conf" "Не удалось установить LANG"
+check_command "arch-chroot /mnt /bin/bash -c 'echo KEYMAP=ru' > /mnt/etc/vconsole.conf" "Не удалось установить KEYMAP"
+check_command "arch-chroot /mnt /bin/bash -c 'echo \"$HOSTNAME\" > /etc/hostname'" "Не удалось установить имя хоста"
+check_command "arch-chroot /mnt /bin/bash -c 'echo \"127.0.0.1 localhost\" >> /etc/hosts'" "Не удалось добавить localhost в hosts"
+check_command "arch-chroot /mnt /bin/bash -c 'echo \"::1       localhost\" >> /etc/hosts'" "Не удалось добавить localhost в hosts (IPv6)"
+check_command "arch-chroot /mnt /bin/bash -c 'mkinitcpio -P'" "Не удалось создать initramfs"
+check_command "arch-chroot /mnt /bin/bash -c 'echo \"root:$ROOT_PASSWORD\" | chpasswd'" "Не удалось установить пароль root"
+check_command "arch-chroot /mnt /bin/bash -c 'useradd -m -g users -G wheel -s /bin/bash \"$USERNAME\"'" "Не удалось создать пользователя"
+check_command "arch-chroot /mnt /bin/bash -c 'echo \"$USERNAME:$USER_PASSWORD\" | chpasswd'" "Не удалось установить пароль пользователя"
+check_command "arch-chroot /mnt /bin/bash -c 'echo \"%wheel ALL=(ALL) ALL\" >> /etc/sudoers'" "Не удалось настроить sudo"
+
+# Добавление multilib репозитория
+check_command "arch-chroot /mnt /bin/bash -c 'sed -i \"/$$multilib$$/,/Include/ s/^#//\" /etc/pacman.conf'" "Не удалось включить multilib"
+
+# Добавление опций Color и ILoveCandy в pacman.conf
+check_command "arch-chroot /mnt /bin/bash -c 'sed -i \"/$$options$$/a Color\\nILoveCandy\" /etc/pacman.conf'" "Не удалось добавить опции Color и ILoveCandy"
+
+# Проверка наличия необходимых пакетов для GRUB
+if [ -d /sys/firmware/efi/ ]; then
+    # EFI
+    check_command "arch-chroot /mnt /bin/bash -c 'pacman -S --noconfirm efibootmgr dosfstools'" "Не удалось установить efibootmgr и dosfstools"
+    check_command "arch-chroot /mnt /bin/bash -c 'grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB'" "Не удалось установить GRUB (EFI)"
+    check_command "arch-chroot /mnt /bin/bash -c 'grub-mkconfig -o /boot/grub/grub.cfg'" "Не удалось сгенерировать grub.cfg (EFI)"
+else
+    # BIOS
+    check_command "arch-chroot /mnt /bin/bash -c 'grub-install $DISK'" "Не удалось установить GRUB (BIOS)"
+    check_command "arch-chroot /mnt /bin/bash -c 'grub-mkconfig -o /boot/grub/grub.cfg'" "Не удалось сгенерировать grub.cfg (BIOS)"
+fi
+
+check_command "arch-chroot /mnt /bin/bash -c 'systemctl enable NetworkManager'" "Не удалось включить NetworkManager"
+check_command "arch-chroot /mnt /bin/bash -c 'systemctl enable sddm'" "Не удалось включить sddm"
 
 # === Размонтирование разделов ===
 echo -e "\n\033[1;32m=== Размонтирование разделов ===\033[0m"
