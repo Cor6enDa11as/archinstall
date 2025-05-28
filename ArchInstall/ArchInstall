@@ -206,109 +206,118 @@ read -p "Введите имя хоста: " HOSTNAME
 select_timezone
 
 # === Установка базовой системы ===
-check_command "pacstrap /mnt base linux linux-firmware vim networkmanager dhcpcd plasma-desktop konsole firefox firefox-i18n-ru ttf-liberation noto-fonts-cjk noto-fonts-emoji" "Не удалось установить базовую систему и KDE Plasma"
+check_command "pacstrap /mnt base linux linux-firmware networkmanager dhcpcd plasma-desktop sddm sddm-kcm firefox packagekit-qt5 bluez bluez-utils konsole firefox firefox-i18n-ru ttf-liberation noto-fonts-cjk noto-fonts-emoji" "Не удалось установить базовую систему и KDE Plasma"
 
 # === Генерация fstab ===
 check_command "genfstab -U /mnt >> /mnt/etc/fstab" "Не удалось сгенерировать fstab"
 
 
 
+#!/bin/bash
+
+# === Настройки ===
+TIMEZONE="Europe/Moscow"
+HOSTNAME="myhostname"
+ROOT_PASSWORD="rootpassword"
+USERNAME="myuser"
+USER_PASSWORD="userpassword"
+DISK="/dev/sda"  # Замените на ваш диск
+
 # === Chroot-настройка ===
-arch-chroot /mnt /bin/bash -c "ln -sf /usr/share/zoneinfo/$TIMEZONE /etc/localtime"
-echo "OK: Не удалось установить часовой пояс" || exit 1
 
-arch-chroot /mnt /bin/bash -c "hwclock --systohc"
-echo "OK: Не удалось установить аппаратные часы" || exit 1
+# Функция для выполнения команд в chroot и проверки результата
+run_chroot() {
+    local CMD="$1"
+    echo "Выполнение в chroot: $CMD"
+    arch-chroot /mnt /bin/bash -c "$CMD"
+    if [ $? -ne 0 ]; then
+        echo "Ошибка при выполнении: $CMD"
+        exit 1
+    fi
+}
 
-# Раскомментируем строки для русской локали в /etc/locale.gen
-arch-chroot /mnt /bin/bash -c "sed -i 's/#ru_RU.UTF-8 UTF-8/ru_RU.UTF-8 UTF-8/g' /etc/locale.gen"
-echo "OK: Не удалось раскомментировать ru_RU.UTF-8" || exit 1
+echo "Настройка часового пояса..."
+run_chroot "ln -sf /usr/share/zoneinfo/$TIMEZONE /etc/localtime"
 
-arch-chroot /mnt /bin/bash -c "sed -i 's/#ru_RU ISO-8859-5/ru_RU ISO-8859-5/g' /etc/locale.gen"
-echo "OK: Не удалось раскомментировать ru_RU ISO-8859-5" || exit 1
+echo "Установка аппаратных часов..."
+run_chroot "hwclock --systohc"
 
-arch-chroot /mnt /bin/bash -c "sed -i 's/#en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/g' /etc/locale.gen"
-echo "OK: Не удалось раскомментировать en_US.UTF-8" || exit 1
+echo "Раскомментирование строк для русской локали..."
+run_chroot "sed -i 's/#ru_RU.UTF-8 UTF-8/ru_RU.UTF-8 UTF-8/g' /etc/locale.gen"
+run_chroot "sed -i 's/#ru_RU ISO-8859-5/ru_RU ISO-8859-5/g' /etc/locale.gen"
+run_chroot "sed -i 's/#en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/g' /etc/locale.gen"
 
-arch-chroot /mnt /bin/bash -c "locale-gen"
-echo "OK: Не удалось сгенерировать локали" || exit 1
+echo "Генерация локалей..."
+run_chroot "locale-gen"
 
-arch-chroot /mnt /bin/bash -c "echo LANG=ru_RU.UTF-8 > /mnt/etc/locale.conf"
-echo "OK: Не удалось установить LANG" || exit 1
+echo "Установка LANG..."
+run_chroot "echo LANG=ru_RU.UTF-8 > /etc/locale.conf"
 
-arch-chroot /mnt /bin/bash -c "echo KEYMAP=ru > /mnt/etc/vconsole.conf"
-echo "OK: Не удалось установить KEYMAP" || exit 1
+echo "Установка KEYMAP..."
+run_chroot "echo KEYMAP=ru > /etc/vconsole.conf"
 
-# Добавляем FONT в vconsole.conf
-arch-chroot /mnt /bin/bash -c "echo 'FONT=cyr-sun16' >> /etc/vconsole.conf"
-echo "OK: Не удалось установить FONT" || exit 1
+echo "Установка FONT..."
+run_chroot "echo 'FONT=cyr-sun16' >> /etc/vconsole.conf"
 
-arch-chroot /mnt /bin/bash -c "echo \"$HOSTNAME\" > /etc/hostname"
-echo "OK: Не удалось установить имя хоста" || exit 1
+echo "Установка имени хоста..."
+run_chroot "echo \"$HOSTNAME\" > /etc/hostname"
 
-arch-chroot /mnt /bin/bash -c "echo \"127.0.0.1 localhost\" >> /etc/hosts"
-echo "OK: Не удалось добавить localhost в hosts" || exit 1
+echo "Добавление localhost в hosts..."
+run_chroot "echo \"127.0.0.1 localhost\" >> /etc/hosts"
+run_chroot "echo \"::1       localhost\" >> /etc/hosts"
 
-arch-chroot /mnt /bin/bash -c "echo \"::1       localhost\" >> /etc/hosts"
-echo "OK: Не удалось добавить localhost в hosts (IPv6)" || exit 1
+echo "Создание initramfs..."
+run_chroot "mkinitcpio -P"
 
-arch-chroot /mnt /bin/bash -c "mkinitcpio -P"
-echo "OK: Не удалось создать initramfs" || exit 1
+echo "Установка пароля root..."
+run_chroot "echo \"root:$ROOT_PASSWORD\" | chpasswd"
 
-arch-chroot /mnt /bin/bash -c "echo \"root:$ROOT_PASSWORD\" | chpasswd"
-echo "OK: Не удалось установить пароль root" || exit 1
+echo "Создание пользователя..."
+run_chroot "useradd -m -G wheel -s /bin/bash \"$USERNAME\""
 
-# Создаем пользователя
-arch-chroot /mnt /bin/bash -c "useradd -m -G wheel -s /bin/bash \"$USERNAME\""
-echo "OK: Не удалось создать пользователя" || exit 1
+echo "Установка пароля пользователя..."
+run_chroot "echo \"$USERNAME:$USER_PASSWORD\" | chpasswd"
 
-arch-chroot /mnt /bin/bash -c "echo \"$USERNAME:$USER_PASSWORD\" | chpasswd"
-echo "OK: Не удалось установить пароль пользователя" || exit 1
+echo "Настройка sudo..."
+run_chroot "echo \"%wheel ALL=(ALL) ALL\" >> /etc/sudoers"
 
-arch-chroot /mnt /bin/bash -c "echo \"%wheel ALL=(ALL) ALL\" >> /etc/sudoers"
-echo "OK: Не удалось настроить sudo" || exit 1
+echo "Включение multilib репозитория..."
+run_chroot "sed -i '/\$$multilib\$$/,/Include/ s/^#//' /etc/pacman.conf"
 
-# Включаем multilib репозиторий
-arch-chroot /mnt /bin/bash -c "sed -i '/\$$multilib\$$/,/Include/ s/^#//' /etc/pacman.conf"
-echo "OK: Не удалось включить multilib" || exit 1
-
-# Добавляем опции Color и ILoveCandy в pacman.conf
-arch-chroot /mnt /bin/bash -c "sed -i '/\$$options\$$/a Color\\nILoveCandy' /etc/pacman.conf"
-echo "OK: Не удалось добавить опции Color и ILoveCandy" || exit 1
+echo "Добавление опций Color и ILoveCandy..."
+run_chroot "sed -i '/\$$options\$$/a Color\\nILoveCandy' /etc/pacman.conf"
 
 # Проверка наличия необходимых пакетов для GRUB
 if [ -d /sys/firmware/efi/ ]; then
     # EFI
-    arch-chroot /mnt /bin/bash -c "pacman -S --noconfirm efibootmgr dosfstools"
-    echo "OK: Не удалось установить efibootmgr и dosfstools" || exit 1
-    arch-chroot /mnt /bin/bash -c "grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB"
-    echo "OK: Не удалось установить GRUB (EFI)" || exit 1
-    arch-chroot /mnt /bin/bash -c "grub-mkconfig -o /boot/grub/grub.cfg"
-    echo "OK: Не удалось сгенерировать grub.cfg (EFI)" || exit 1
+    echo "Установка efibootmgr и dosfstools..."
+    run_chroot "pacman -Syy --noconfirm grub grub-btrfs efibootmgr dosfstools"
+    echo "Установка GRUB (EFI)..."
+    run_chroot "grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB"
+    echo "Генерация grub.cfg (EFI)..."
+    run_chroot "grub-mkconfig -o /boot/grub/grub.cfg"
 else
     # BIOS
-    arch-chroot /mnt /bin/bash -c "grub-install $DISK"
-    echo "OK: Не удалось установить GRUB (BIOS)" || exit 1
-    arch-chroot /mnt /bin/bash -c "grub-mkconfig -o /boot/grub/grub.cfg"
-    echo "OK: Не удалось сгенерировать grub.cfg (BIOS)" || exit 1
+    echo "Установка GRUB (BIOS)..."
+    run_chroot "grub-install $DISK"
+    echo "Генерация grub.cfg (BIOS)..."
+    run_chroot "grub-mkconfig -o /boot/grub/grub.cfg"
 fi
 
-arch-chroot /mnt /bin/bash -c "systemctl enable NetworkManager"
-echo "OK: Не удалось включить NetworkManager" || exit 1
+echo "Включение NetworkManager..."
+run_chroot "systemctl enable NetworkManager"
 
-arch-chroot /mnt /bin/bash -c "systemctl enable sddm"
-echo "OK: Не удалось включить sddm" || exit 1
+echo "Включение SDDM..."
+run_chroot "systemctl enable sddm"
 
 # === Выход из chroot ===
 echo "Выход из chroot..."
 arch-chroot /mnt /bin/bash -c "exit"
-echo "OK: Не удалось выйти из chroot" || exit 1
 
 # === Размонтирование ===
 echo "Размонтирование /mnt..."
 umount -R /mnt
-echo "OK: Не удалось размонтировать /mnt" || exit 1
 
 # === Перезагрузка ===
 echo "Перезагрузка системы..."
-reboot
+#reboot
