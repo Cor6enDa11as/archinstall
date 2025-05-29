@@ -185,7 +185,7 @@ if [ "$FILESYSTEM" == "btrfs" ]; then
 else
   # Монтирование корневого раздела (ext4) с опциями
   EXT4_OPTIONS="noatime,discard,defaults"
-  check_command "mount $EXT4_OPTIONS $ROOT_PART /mnt" "Не удалось смонтировать корневой раздел"
+  check_command "mount -o $EXT4_OPTIONS $ROOT_PART /mnt" "Не удалось смонтировать корневой раздел"
 fi
 
 # Монтирование раздела EFI
