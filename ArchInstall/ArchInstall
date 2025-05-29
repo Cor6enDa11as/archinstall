@@ -150,7 +150,7 @@ fi
 if [ -d /sys/firmware/efi/ ]; then
     check_command "mkfs.vfat -F32 $EFI_PART" "Не удалось отформатировать раздел EFI"
 fi
-check_command "mkfs.$FILESYSTEM -f $ROOT_PART" "Не удалось отформатировать корневой раздел"
+check_command "mkfs.$FILESYSTEM $ROOT_PART" "Не удалось отформатировать корневой раздел"
 
 # === Монтирование разделов ===
 if [ "$FILESYSTEM" == "btrfs" ]; then
