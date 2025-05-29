@@ -206,22 +206,10 @@ read -p "Введите имя хоста: " HOSTNAME
 select_timezone
 
 # === Установка базовой системы ===
-check_command "pacstrap /mnt base linux linux-firmware networkmanager dhcpcd plasma-desktop sddm sddm-kcm firefox packagekit-qt5 bluez bluez-utils konsole firefox firefox-i18n-ru ttf-liberation noto-fonts-cjk noto-fonts-emoji" "Не удалось установить базовую систему и KDE Plasma"
+check_command "pacstrap /mnt base linux linux-firmware networkmanager dhcpcd plasma-desktop sddm sddm-kcm firefox packagekit-qt5 bluez bluez-utils konsole firefox firefox-i18n-ru btrfs-progs ttf-liberation noto-fonts-cjk noto-fonts-emoji" "Не удалось установить базовую систему и KDE Plasma"
 
 # === Генерация fstab ===
 check_command "genfstab -U /mnt >> /mnt/etc/fstab" "Не удалось сгенерировать fstab"
-
-
-
-#!/bin/bash
-
-# === Настройки ===
-TIMEZONE="Europe/Moscow"
-HOSTNAME="myhostname"
-ROOT_PASSWORD="rootpassword"
-USERNAME="myuser"
-USER_PASSWORD="userpassword"
-DISK="/dev/sda"  # Замените на ваш диск
 
 # === Chroot-настройка ===
 
