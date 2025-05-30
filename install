@@ -222,7 +222,7 @@ read -p "Введите имя хоста: " HOSTNAME
 select_timezone
 
 # === Установка базовой системы ===
-check_command "pacstrap /mnt base linux linux-firmware sudo nano networkmanager dhcpcd plasma-desktop sddm sddm-kcm gwenview dolphin firefox packagekit-qt5 bluez bluez-utils konsole firefox firefox-i18n-ru btrfs-progs ttf-liberation noto-fonts-cjk noto-fonts-emoji" "Не удалось установить базовую систему и KDE Plasma"
+check_command "pacstrap -i /mnt base linux linux-firmware sudo nano networkmanager dhcpcd plasma-desktop sddm sddm-kcm gwenview dolphin kate power-profiles-daemon firefox packagekit-qt5 bluez bluez-utils konsole firefox firefox-i18n-ru btrfs-progs ttf-liberation noto-fonts-cjk noto-fonts-emoji intel-ucode amd-ucode" "Не удалось установить базовую систему и KDE Plasma"
 
 # === Генерация fstab ===
 check_command "genfstab -U /mnt >> /mnt/etc/fstab" "Не удалось сгенерировать fstab"
