@@ -146,7 +146,18 @@ if [ ! -b "$ROOT_PART" ]; then
   error_handler "Корневой раздел $ROOT_PART не найден"
 fi
 
-# Разделение форматирования для ext4 и btrfs
+# форматирование разделов
+
+if [ -d /sys/firmware/efi/ ]; then
+  # Проверяем, отформатирован ли раздел EFI
+  if ! blkid | grep -q "$EFI_PART: UUID="; then
+    echo "Форматирование раздела EFI ($EFI_PART) в FAT32"
+    check_command "mkfs.vfat -F32 $EFI_PART" "Не удалось отформатировать раздел EFI"
+  else
+    echo "Раздел EFI ($EFI_PART) уже отформатирован"
+  fi
+fi
+
 if [ "$FILESYSTEM" == "ext4" ]; then
     check_command "mkfs.ext4 $ROOT_PART" "Не удалось отформатировать корневой раздел в ext4"
 elif [ "$FILESYSTEM" == "btrfs" ]; then
