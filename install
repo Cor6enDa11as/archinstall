@@ -191,10 +191,11 @@ if [ "$FILESYSTEM" == "btrfs" ]; then
   # Монтирование подтомов с опциями
   BTRFS_OPTIONS="noatime,compress=zstd:2,ssd,space_cache=v2,discard=async"
   check_command "mount -o subvol=@,$BTRFS_OPTIONS $ROOT_PART /mnt" "Не удалось смонтировать подтом @"
-  mkdir -p /mnt/{home,var,.snapshots,var/log,var/cache/pacman/pkg}
+  mkdir -p /mnt/{home,var,.snapshots}
   check_command "mount -o subvol=@home,$BTRFS_OPTIONS $ROOT_PART /mnt/home" "Не удалось смонтировать подтом @home"
   check_command "mount -o subvol=@var,$BTRFS_OPTIONS $ROOT_PART /mnt/var" "Не удалось смонтировать подтом @var"
   check_command "mount -o subvol=@.snapshots,$BTRFS_OPTIONS $ROOT_PART /mnt/.snapshots" "Не удалось смонтировать подтом @.snapshots"
+  mkdir -p /mnt/var/{log,cache/pacman/pkg}
   check_command "mount -o subvol=@log,$BTRFS_OPTIONS $ROOT_PART /mnt/var/log" "Не удалось смонтировать подтом @log"
   check_command "mount -o subvol=@pkg,$BTRFS_OPTIONS $ROOT_PART /mnt/var/cache/pacman/pkg" "Не удалось смонтировать подтом @pkg"
 else
