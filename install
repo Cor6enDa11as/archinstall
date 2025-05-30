@@ -146,11 +146,15 @@ if [ ! -b "$ROOT_PART" ]; then
   error_handler "Корневой раздел $ROOT_PART не найден"
 fi
 
-# === Форматирование разделов ===
-if [ -d /sys/firmware/efi/ ]; then
-    check_command "mkfs.vfat -F32 $EFI_PART" "Не удалось отформатировать раздел EFI"
+# Разделение форматирования для ext4 и btrfs
+if [ "$FILESYSTEM" == "ext4" ]; then
+    check_command "mkfs.ext4 $ROOT_PART" "Не удалось отформатировать корневой раздел в ext4"
+elif [ "$FILESYSTEM" == "btrfs" ]; then
+    check_command "mkfs.btrfs -f $ROOT_PART" "Не удалось отформатировать корневой раздел в btrfs"
+else
+    echo "Неподдерживаемая файловая система: $FILESYSTEM"
+    exit 1
 fi
-check_command "mkfs.$FILESYSTEM $ROOT_PART" "Не удалось отформатировать корневой раздел"
 
 # === Монтирование разделов ===
 if [ "$FILESYSTEM" == "btrfs" ]; then
@@ -206,7 +210,7 @@ read -p "Введите имя хоста: " HOSTNAME
 select_timezone
 
 # === Установка базовой системы ===
-check_command "pacstrap /mnt base linux linux-firmware networkmanager dhcpcd plasma-desktop sddm sddm-kcm gwenview dolphin firefox packagekit-qt5 bluez bluez-utils konsole firefox firefox-i18n-ru btrfs-progs ttf-liberation noto-fonts-cjk noto-fonts-emoji" "Не удалось установить базовую систему и KDE Plasma"
+check_command "pacstrap /mnt base linux linux-firmware sudo nano networkmanager dhcpcd plasma-desktop sddm sddm-kcm gwenview dolphin firefox packagekit-qt5 bluez bluez-utils konsole firefox firefox-i18n-ru btrfs-progs ttf-liberation noto-fonts-cjk noto-fonts-emoji" "Не удалось установить базовую систему и KDE Plasma"
 
 # === Генерация fstab ===
 check_command "genfstab -U /mnt >> /mnt/etc/fstab" "Не удалось сгенерировать fstab"
@@ -232,7 +236,6 @@ run_chroot "hwclock --systohc"
 
 echo "Раскомментирование строк для русской локали..."
 run_chroot "sed -i 's/#ru_RU.UTF-8 UTF-8/ru_RU.UTF-8 UTF-8/g' /etc/locale.gen"
-run_chroot "sed -i 's/#ru_RU ISO-8859-5/ru_RU ISO-8859-5/g' /etc/locale.gen"
 run_chroot "sed -i 's/#en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/g' /etc/locale.gen"
 
 echo "Генерация локалей..."
@@ -270,10 +273,11 @@ echo "Настройка sudo..."
 run_chroot "echo \"%wheel ALL=(ALL) ALL\" >> /etc/sudoers"
 
 echo "Включение multilib репозитория..."
-run_chroot "sed -i '/\$$multilib\$$/,/Include/ s/^#//' /etc/pacman.conf"
+run_chroot "sed -i '/$$multilib$$/,/Include = \/etc\/pacman\.d\/mirrorlist/s/^#//' /etc/pacman.conf"
 
 echo "Добавление опций Color и ILoveCandy..."
-run_chroot "sed -i '/\$$options\$$/a Color\\nILoveCandy' /etc/pacman.conf"
+run_chroot "sed -i 's/#Color/Color/' /etc/pacman.conf"
+run_chroot "sed -i '/^Color/a ILoveCandy' /etc/pacman.conf"
 
 # Проверка наличия необходимых пакетов для GRUB
 if [ -d /sys/firmware/efi/ ]; then
@@ -308,4 +312,4 @@ umount -R /mnt
 
 # === Перезагрузка ===
 echo "Перезагрузка системы..."
-#reboot
+reboot
