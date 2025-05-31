@@ -308,8 +308,8 @@ echo "Настройка sudo..."
 run_chroot "echo \"%wheel ALL=(ALL) ALL\" >> /etc/sudoers"
 
 echo "Включение multilib репозитория..."
-run_chroot "sed -i '/$$multilib$$/,/Include = \/etc\/pacman\.d\/mirrorlist/s/^#//' /etc/pacman.conf"
-
+#run_chroot "sed -i '/$$multilib$$/,/Include = \/etc\/pacman\.d\/mirrorlist/s/^#//' /etc/pacman.conf"
+run_chroot "sed -i '/$$multilib$$/,/Include/s/^#//' /etc/pacman.conf"
 echo "Добавление опций Color и ILoveCandy..."
 run_chroot "sed -i 's/#Color/Color/' /etc/pacman.conf"
 run_chroot "sed -i '/^Color/a ILoveCandy' /etc/pacman.conf"
@@ -318,7 +318,7 @@ run_chroot "sed -i '/^Color/a ILoveCandy' /etc/pacman.conf"
 if [ -d /sys/firmware/efi/ ]; then
     # EFI
     echo "Установка efibootmgr и dosfstools..."
-    run_chroot "pacman -Syy --noconfirm grub grub-btrfs efibootmgr dosfstools"
+    run_chroot "pacman -Syy --noconfirm grub grub-btrfs efibootmgr dosfstools dbus dbus-glib"
 
     echo "Установка GRUB (EFI)..."
     run_chroot "grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB --no-nvram --removable /dev/$DISK"
