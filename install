@@ -189,7 +189,7 @@ if [ "$FILESYSTEM" == "btrfs" ]; then
   check_command "umount -R /mnt" "Не удалось размонтировать корневой раздел"
 
   # Монтирование подтомов с опциями
-  BTRFS_OPTIONS="noatime,compress=zstd:2,ssd,space_cache=v2,discard=async"
+  BTRFS_OPTIONS="rw,noatime,compress=zstd:2,ssd,space_cache=v2,discard=async,subvol"
   check_command "mount -o subvol=@,$BTRFS_OPTIONS $ROOT_PART /mnt" "Не удалось смонтировать подтом @"
   mkdir -p /mnt/{home,var,.snapshots}
   check_command "mount -o subvol=@home,$BTRFS_OPTIONS $ROOT_PART /mnt/home" "Не удалось смонтировать подтом @home"
@@ -220,6 +220,22 @@ read -p "Введите имя хоста: " HOSTNAME
 
 # === Выбор часового пояса ===
 select_timezone
+
+check_command "pacman -S pacman-contrib --noconfirm" "Не удалось установить pacman-contrib"
+
+#Создаем резервную копию текущего файла mirrorlist
+
+check_command "cp /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.backup" "Не удалось копирование"
+
+#Раскомментирует все строки
+
+check_command "sed -i 's/^#Server/Server/' /etc/pacman.d/mirrorlist.backup" "Не удалось копирование"
+
+#Проверяет скорость всех зеркал в файле mirrorlist.backup
+
+check_command "rankmirrors -n 10 /etc/pacman.d/mirrorlist.backup > /etc/pacman.d/mirrorlist" "Не удалось копирование"
+
+check_command "pacman -Syy" "Не удалось копирование"
 
 # === Установка базовой системы ===
 check_command "pacstrap -i /mnt base linux linux-firmware sudo nano networkmanager dhcpcd plasma-desktop sddm sddm-kcm gwenview dolphin kate power-profiles-daemon firefox packagekit-qt5 bluez bluez-utils konsole firefox firefox-i18n-ru btrfs-progs ttf-liberation noto-fonts-cjk noto-fonts-emoji intel-ucode amd-ucode" "Не удалось установить базовую систему и KDE Plasma"
@@ -296,16 +312,17 @@ if [ -d /sys/firmware/efi/ ]; then
     # EFI
     echo "Установка efibootmgr и dosfstools..."
     run_chroot "pacman -Syy --noconfirm grub grub-btrfs efibootmgr dosfstools"
+
     echo "Установка GRUB (EFI)..."
     run_chroot "grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB --no-nvram --removable /dev/$DISK"
     echo "Генерация grub.cfg (EFI)..."
     run_chroot "grub-mkconfig -o /boot/grub/grub.cfg"
-else
+#else
     # BIOS
-    echo "Установка GRUB (BIOS)..."
-    run_chroot "grub-install $DISK"
-    echo "Генерация grub.cfg (BIOS)..."
-    run_chroot "grub-mkconfig -o /boot/grub/grub.cfg"
+   # echo "Установка GRUB (BIOS)..."
+    #run_chroot "grub-install $DISK"
+   # echo "Генерация grub.cfg (BIOS)..."
+   # run_chroot "grub-mkconfig -o /boot/grub/grub.cfg"
 fi
 
 echo "Включение NetworkManager..."
