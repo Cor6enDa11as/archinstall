@@ -33,8 +33,15 @@ error_handler() {
 }
 
 # Функция для проверки, является ли команда успешной
+#check_command() {
+#  $1
+#  if [ $? -ne 0 ]; then
+#    error_handler "$2"
+#  fi
+#}
+
 check_command() {
-  $1
+  /bin/bash -c "$1"
   if [ $? -ne 0 ]; then
     error_handler "$2"
   fi
@@ -229,7 +236,7 @@ check_command "cp /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.backup" "Н�
 
 #Раскомментирует все строки
 
-sed -i 's/^#Server/Server/' /etc/pacman.d/mirrorlist.backup
+check_command "sed -i 's/^#Server/Server/' /etc/pacman.d/mirrorlist.backup" "Не удалось копирование"
 
 #Проверяет скорость всех зеркал в файле mirrorlist.backup
 
