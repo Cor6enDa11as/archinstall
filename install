@@ -33,12 +33,6 @@ error_handler() {
 }
 
 # Функция для проверки, является ли команда успешной
-#check_command() {
-#  $1
-#  if [ $? -ne 0 ]; then
-#    error_handler "$2"
-#  fi
-#}
 
 check_command() {
   /bin/bash -c "$1"
@@ -127,11 +121,6 @@ check_command "parted -s $DISK mkpart primary fat32 1MiB ${EFI_PARTITION_SIZE}" 
 check_command "parted -s $DISK set 1 boot on" "Не удалось установить флаг boot на раздел EFI"
 check_command "parted -s $DISK mkpart primary ext4 ${EFI_PARTITION_SIZE} 100%" "Не удалось создать корневой раздел"
 
-# Вывод таблицы разделов
-echo -e "\n\033[1;33mТаблица разделов после parted:\033[0m"
-fdisk -l $DISK
-
-# Задержка, чтобы разделы появились в системе
 sleep 2
 
 # === Определение разделов ===
@@ -245,7 +234,7 @@ check_command "rankmirrors -n 10 /etc/pacman.d/mirrorlist.backup > /etc/pacman.d
 check_command "pacman -Syy" "Не удалось копирование"
 
 # === Установка базовой системы ===
-check_command "pacstrap -i /mnt base linux linux-firmware sudo nano networkmanager dhcpcd plasma-desktop sddm sddm-kcm gwenview dolphin kate power-profiles-daemon firefox packagekit-qt5 bluez bluez-utils konsole firefox firefox-i18n-ru btrfs-progs ttf-liberation noto-fonts-cjk noto-fonts-emoji intel-ucode amd-ucode" "Не удалось установить базовую систему и KDE Plasma"
+check_command "pacstrap -i /mnt base linux linux-firmware sudo nano networkmanager dhcpcd plasma-desktop sddm sddm-kcm gwenview dolphin kate power-profiles-daemon firefox packagekit-qt5 bluez bluez-utils konsole firefox firefox-i18n-ru btrfs-progs ttf-liberation noto-fonts-cjk noto-fonts-emoji intel-ucode amd-ucode  pacman-contrib grub grub-btrfs efibootmgr --noconfirm" "Не удалось установить базовую систему и KDE Plasma"
 
 # === Генерация fstab ===
 check_command "genfstab -U /mnt >> /mnt/etc/fstab" "Не удалось сгенерировать fstab"
@@ -308,18 +297,14 @@ echo "Настройка sudo..."
 run_chroot "echo \"%wheel ALL=(ALL) ALL\" >> /etc/sudoers"
 
 echo "Включение multilib репозитория..."
-#run_chroot "sed -i '/$$multilib$$/,/Include = \/etc\/pacman\.d\/mirrorlist/s/^#//' /etc/pacman.conf"
-run_chroot "sed -i '/$$multilib$$/,/Include/s/^#//' /etc/pacman.conf"
+run_chroot "sed -i '/^#\[multilib\]/,/^#Include/ s/^#//' /etc/pacman.conf"
 echo "Добавление опций Color и ILoveCandy..."
 run_chroot "sed -i 's/#Color/Color/' /etc/pacman.conf"
 run_chroot "sed -i '/^Color/a ILoveCandy' /etc/pacman.conf"
+run_chroot "pacman -Sy"
 
 # Проверка наличия необходимых пакетов для GRUB
 if [ -d /sys/firmware/efi/ ]; then
-    # EFI
-    echo "Установка efibootmgr и dosfstools..."
-    run_chroot "pacman -Syy --noconfirm grub grub-btrfs efibootmgr dosfstools dbus dbus-glib"
-
     echo "Установка GRUB (EFI)..."
     run_chroot "grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB --no-nvram --removable /dev/$DISK"
     echo "Генерация grub.cfg (EFI)..."
