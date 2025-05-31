@@ -229,7 +229,7 @@ check_command "cp /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.backup" "Н�
 
 #Раскомментирует все строки
 
-check_command "sed -i 's/^#Server/Server/' /etc/pacman.d/mirrorlist.backup" "Не удалось копирование"
+sed -i 's/^#Server/Server/' /etc/pacman.d/mirrorlist.backup
 
 #Проверяет скорость всех зеркал в файле mirrorlist.backup
 
