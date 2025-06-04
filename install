@@ -200,7 +200,7 @@ sleep 4
 if [ -d /sys/firmware/efi/ ]; then
   # Проверяем, отформатирован ли раздел EFI
   if ! blkid | grep -q "$EFI_PART: UUID="; then
-    echo "Форматирование раздела EFI ($EFI_PART) в FAT32"
+   #echo "Форматирование раздела EFI ($EFI_PART) в FAT32"
     check_command "mkfs.vfat -F32 $EFI_PART" "Не удалось отформатировать раздел EFI"
   else
     echo "Раздел EFI ($EFI_PART) уже отформатирован"
@@ -262,7 +262,7 @@ if [ -d /sys/firmware/efi/ ]; then
   check_command "mount $EFI_PART /mnt/boot/efi" "Не удалось смонтировать раздел EFI"
 fi
 
-show_progress 4 $total_steps "Ввод данных нового пользователя..."
+show_progress 4 $total_steps "Ввод данных нового пользователя..." /n
 
 sleep 4
 # === Запрос имени пользователя, пароля и имени хоста ===
@@ -290,7 +290,7 @@ show_progress 7 $total_steps "Установка системы..."
 
 sleep 4
 # === Установка базовой системы ===
-check_command "pacstrap -i /mnt base linux linux-firmware sudo nano networkmanager dhcpcd plasma-desktop sddm sddm-kcm gwenview dolphin kate power-profiles-daemon firefox packagekit-qt5 bluez bluez-utils konsole arc firefox firefox-i18n-ru btrfs-progs ttf-liberation noto-fonts-cjk noto-fonts-emoji intel-ucode amd-ucode  pacman-contrib grub grub-btrfs efibootmgr gst-plugins-bad gst-plugins-ugly gst-plugins-good gst-plugins-base --noconfirm" "Не удалось установить базовую систему и KDE Plasma"
+check_command "pacstrap -i /mnt base linux linux-firmware sudo nano networkmanager dhcpcd plasma-desktop sddm sddm-kcm gwenview dolphin kate power-profiles-daemon firefox packagekit-qt5 bluez bluez-utils konsole ark firefox firefox-i18n-ru btrfs-progs ttf-liberation noto-fonts-cjk noto-fonts-emoji intel-ucode amd-ucode  pacman-contrib grub grub-btrfs efibootmgr gst-plugins-bad gst-plugins-ugly gst-plugins-good gst-plugins-base --noconfirm" "Не удалось установить базовую систему и KDE Plasma"
 
 show_progress 8 $total_steps "Генерация fstab..."
 
