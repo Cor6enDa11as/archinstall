@@ -3,6 +3,46 @@
 
 setfont cyr-sun16 2>/dev/null
 
+show_progress() {
+  local current=$1  # Текущее значение прогресса
+  local total=$2    # Общее количество шагов
+  local message="$3" # Сообщение, которое нужно отобразить
+
+  # Цвета (ANSI escape-последовательности)
+  local green=$'\e[32m'
+  local gray=$'\e[90m'
+  local reset=$'\e[0m'
+
+  # Анимация (символы вращения)
+  local spinner=("|" "/" "-" "\\")
+  local spinner_index=$((current % ${#spinner[@]})) # Индекс текущего символа анимации
+  local animation="${spinner[$spinner_index]}"
+
+  # Вычисляем процент завершения
+  local percentage=$(( (current * 100) / total ))
+
+  # Создаем строку прогресс-бара
+  local bar_length=20 # Длина прогресс-бара
+  local filled_length=$(( (percentage * bar_length) / 100 ))
+  local bar=""
+  for (( i=0; i<filled_length; i++ )); do
+    bar+="${green}="${reset}
+  done
+  for (( i=filled_length; i<bar_length; i++ )); do
+    bar+="${gray} ${reset}"
+  done
+
+  # Выводим прогресс
+  printf "\r%s [%s] %3d%% %s" "$animation" "$bar" "$percentage" "$message"
+
+  # Если это последний шаг, добавляем перенос строки
+  if [ "$current" -eq "$total" ]; then
+    echo ""
+  fi
+}
+
+total_steps=15
+
 echo -e "\033[1;33mУстановка\033[0m"
 
 
@@ -32,12 +72,21 @@ error_handler() {
   exit 1
 }
 
-# Функция для проверки, является ли команда успешной
+# Функция для скрытия вывода команды
+run_silent() {
+  "$@" > /dev/null 2>&1
+}
 
+# Функция для проверки, является ли команда успешной
 check_command() {
-  /bin/bash -c "$1"
+  local command="$1"
+  local error_message="$2"
+
+  # Выполняем команду с помощью run_silent
+  run_silent /bin/bash -c "$command"
+
   if [ $? -ne 0 ]; then
-    error_handler "$2"
+    error_handler "$error_message"
   fi
 }
 
@@ -111,6 +160,9 @@ if mount | grep -q "$DISK"; then
   echo -e "\033[1;32mДиск $DISK успешно размонтирован.\033[0m"
 fi
 
+show_progress 1 $total_steps "Создание разделов..."
+
+sleep 4
 # === Разметка диска ===
 echo -e "\n\033[1;32m=== РАЗМЕТКА ДИСКА ===\033[0m"
 echo -e "\033[1;33mСоздание разделов на $DISK...\033[0m"
@@ -120,8 +172,6 @@ check_command "parted -s $DISK mklabel msdos" "Не удалось создат�
 check_command "parted -s $DISK mkpart primary fat32 1MiB ${EFI_PARTITION_SIZE}" "Не удалось создать раздел EFI"
 check_command "parted -s $DISK set 1 boot on" "Не удалось установить флаг boot на раздел EFI"
 check_command "parted -s $DISK mkpart primary ext4 ${EFI_PARTITION_SIZE} 100%" "Не удалось создать корневой раздел"
-
-sleep 2
 
 # === Определение разделов ===
 if [[ $DISK =~ "nvme" ]]; then
@@ -142,6 +192,9 @@ if [ ! -b "$ROOT_PART" ]; then
   error_handler "Корневой раздел $ROOT_PART не найден"
 fi
 
+show_progress 2 $total_steps "Форматирование разделов..."
+
+sleep 4
 # форматирование разделов
 
 if [ -d /sys/firmware/efi/ ]; then
@@ -163,6 +216,9 @@ else
     exit 1
 fi
 
+show_progress 3 $total_steps "Монтирование разделов..."
+
+sleep 4
 # === Монтирование разделов ===
 if [ "$FILESYSTEM" == "btrfs" ]; then
   # Монтирование корневого раздела (временное)
@@ -183,7 +239,7 @@ if [ "$FILESYSTEM" == "btrfs" ]; then
 
   # Размонтирование корневого раздела
   check_command "umount -R /mnt" "Не удалось размонтировать корневой раздел"
-
+sleep 2
   # Монтирование подтомов с опциями
   BTRFS_OPTIONS="rw,noatime,compress=zstd:2,ssd,space_cache=v2,discard=async"
   check_command "mount -o subvol=@,$BTRFS_OPTIONS $ROOT_PART /mnt" "Не удалось смонтировать подтом @"
@@ -199,13 +255,16 @@ else
   EXT4_OPTIONS="noatime,discard,defaults"
   check_command "mount -o $EXT4_OPTIONS $ROOT_PART /mnt" "Не удалось смонтировать корневой раздел"
 fi
-
+sleep 2
 # Монтирование раздела EFI
 if [ -d /sys/firmware/efi/ ]; then
   mkdir -p /mnt/boot/efi
   check_command "mount $EFI_PART /mnt/boot/efi" "Не удалось смонтировать раздел EFI"
 fi
 
+show_progress 4 $total_steps "Ввод данных нового пользователя..."
+
+sleep 4
 # === Запрос имени пользователя, пароля и имени хоста ===
 read -p "Введите имя пользователя: " USERNAME
 read -s -p "Введите пароль пользователя: " USER_PASSWORD
@@ -214,28 +273,28 @@ read -s -p "Введите пароль root: " ROOT_PASSWORD
 echo    # Добавляем перевод строки после ввода пароля
 read -p "Введите имя хоста: " HOSTNAME
 
+show_progress 5 $total_steps "Настройка местоположения..."
+
+sleep 4
 # === Выбор часового пояса ===
 select_timezone
 
-check_command "pacman -S pacman-contrib --noconfirm" "Не удалось установить pacman-contrib"
+show_progress 6 $total_steps "Настройка зеркал..."
 
-#Создаем резервную копию текущего файла mirrorlist
+sleep 4
+check_command "pacman -S reflector --noconfirm" "Не удалось установить reflector"
+check_command "reflector --verbose --country 'Russia' -l 25 --sort rate --save /etc/pacman.d/mirrorlist" "Не удалось копирование"
+check_command "pacman -Syy" "Не удалось обновление"
 
-check_command "cp /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.backup" "Не удалось копирование"
+show_progress 7 $total_steps "Установка системы..."
 
-#Раскомментирует все строки
-
-check_command "sed -i 's/^#Server/Server/' /etc/pacman.d/mirrorlist.backup" "Не удалось копирование"
-
-#Проверяет скорость всех зеркал в файле mirrorlist.backup
-
-check_command "rankmirrors -n 10 /etc/pacman.d/mirrorlist.backup > /etc/pacman.d/mirrorlist" "Не удалось копирование"
-
-check_command "pacman -Syy" "Не удалось копирование"
-
+sleep 4
 # === Установка базовой системы ===
-check_command "pacstrap -i /mnt base linux linux-firmware sudo nano networkmanager dhcpcd plasma-desktop sddm sddm-kcm gwenview dolphin kate power-profiles-daemon firefox packagekit-qt5 bluez bluez-utils konsole firefox firefox-i18n-ru btrfs-progs ttf-liberation noto-fonts-cjk noto-fonts-emoji intel-ucode amd-ucode  pacman-contrib grub grub-btrfs efibootmgr --noconfirm" "Не удалось установить базовую систему и KDE Plasma"
+check_command "pacstrap -i /mnt base linux linux-firmware sudo nano networkmanager dhcpcd plasma-desktop sddm sddm-kcm gwenview dolphin kate power-profiles-daemon firefox packagekit-qt5 bluez bluez-utils konsole arc firefox firefox-i18n-ru btrfs-progs ttf-liberation noto-fonts-cjk noto-fonts-emoji intel-ucode amd-ucode  pacman-contrib grub grub-btrfs efibootmgr gst-plugins-bad gst-plugins-ugly gst-plugins-good gst-plugins-base --noconfirm" "Не удалось установить базовую систему и KDE Plasma"
 
+show_progress 8 $total_steps "Генерация fstab..."
+
+sleep 4
 # === Генерация fstab ===
 check_command "genfstab -U /mnt >> /mnt/etc/fstab" "Не удалось сгенерировать fstab"
 
@@ -252,85 +311,107 @@ run_chroot() {
     fi
 }
 
-echo "Настройка часового пояса..."
+show_progress 9 $total_steps "Настройка местоположения и времени системы..."
+
+sleep 4
+#echo "Настройка часового пояса..."
 run_chroot "ln -sf /usr/share/zoneinfo/$TIMEZONE /etc/localtime"
 
-echo "Установка аппаратных часов..."
+#echo "Установка аппаратных часов..."
 run_chroot "hwclock --systohc"
 
-echo "Раскомментирование строк для русской локали..."
+show_progress 10 $total_steps "Локализация системы..."
+
+sleep 4
+#echo "Раскомментирование строк для русской локали..."
 run_chroot "sed -i 's/#ru_RU.UTF-8 UTF-8/ru_RU.UTF-8 UTF-8/g' /etc/locale.gen"
 run_chroot "sed -i 's/#en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/g' /etc/locale.gen"
 
-echo "Генерация локалей..."
+#echo "Генерация локалей..."
 run_chroot "locale-gen"
 
-echo "Установка LANG..."
+#echo "Установка LANG..."
 run_chroot "echo LANG=ru_RU.UTF-8 > /etc/locale.conf"
 
-echo "Установка KEYMAP..."
+#echo "Установка KEYMAP..."
 run_chroot "echo KEYMAP=ru > /etc/vconsole.conf"
 
-echo "Установка FONT..."
+#echo "Установка FONT..."
 run_chroot "echo 'FONT=cyr-sun16' >> /etc/vconsole.conf"
 
-echo "Установка имени хоста..."
+#echo "Установка имени хоста..."
 run_chroot "echo \"$HOSTNAME\" > /etc/hostname"
 
-echo "Добавление localhost в hosts..."
+#echo "Добавление localhost в hosts..."
 run_chroot "echo \"127.0.0.1 localhost\" >> /etc/hosts"
 run_chroot "echo \"::1       localhost\" >> /etc/hosts"
 
-echo "Создание initramfs..."
+show_progress 10 $total_steps "Создание начального образа системы..."
+
+sleep 4
+#echo "Создание initramfs..."
 run_chroot "mkinitcpio -P"
 
-echo "Установка пароля root..."
+show_progress 11 $total_steps "Создание пользователя..."
+
+sleep 4
+#echo "Установка пароля root..."
 run_chroot "echo \"root:$ROOT_PASSWORD\" | chpasswd"
 
-echo "Создание пользователя..."
+#echo "Создание пользователя..."
 run_chroot "useradd -m -G wheel -s /bin/bash \"$USERNAME\""
 
-echo "Установка пароля пользователя..."
+#echo "Установка пароля пользователя..."
 run_chroot "echo \"$USERNAME:$USER_PASSWORD\" | chpasswd"
 
-echo "Настройка sudo..."
+#echo "Настройка sudo..."
 run_chroot "echo \"%wheel ALL=(ALL) ALL\" >> /etc/sudoers"
 
-echo "Включение multilib репозитория..."
+show_progress 12 $total_steps "Настройка пакетного менеджера..."
+
+sleep 4
+#echo "Включение multilib репозитория..."
 run_chroot "sed -i '/^#\[multilib\]/,/^#Include/ s/^#//' /etc/pacman.conf"
-echo "Добавление опций Color и ILoveCandy..."
+#echo "Добавление опций Color и ILoveCandy..."
 run_chroot "sed -i 's/#Color/Color/' /etc/pacman.conf"
 run_chroot "sed -i '/^Color/a ILoveCandy' /etc/pacman.conf"
 run_chroot "pacman -Sy"
 
-# Проверка наличия необходимых пакетов для GRUB
+show_progress 13 $total_steps "Установка и настройка загрузчика..."
+
+sleep 4
+
 if [ -d /sys/firmware/efi/ ]; then
-    echo "Установка GRUB (EFI)..."
+    #echo "Установка GRUB (EFI)..."
     run_chroot "grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB --no-nvram --removable /dev/$DISK"
-    echo "Генерация grub.cfg (EFI)..."
+    #echo "Генерация grub.cfg (EFI)..."
     run_chroot "grub-mkconfig -o /boot/grub/grub.cfg"
-#else
-    # BIOS
-   # echo "Установка GRUB (BIOS)..."
-    #run_chroot "grub-install $DISK"
-   # echo "Генерация grub.cfg (BIOS)..."
-   # run_chroot "grub-mkconfig -o /boot/grub/grub.cfg"
 fi
 
-echo "Включение NetworkManager..."
+show_progress 14 $total_steps "Запуск необходимых служб..."
+
+sleep 6
+#echo "Включение NetworkManager..."
 run_chroot "systemctl enable NetworkManager"
 
-echo "Включение SDDM..."
+#echo "Включение SDDM..."
 run_chroot "systemctl enable sddm"
 
+show_progress 15 $total_steps "Завершение настройки..."
+
+sleep 6
 # === Выход из chroot ===
-echo "Выход из chroot..."
+#echo "Выход из chroot..."
 arch-chroot /mnt /bin/bash -c "exit"
 
 # === Размонтирование ===
-echo "Размонтирование /mnt..."
+#echo "Размонтирование /mnt..."
 umount -R /mnt
+sleep 2
 
+echo "Система успешно установлена!"
+
+sleep 4
 # === Перезагрузка ===
 echo "Перезагрузка системы..."
 #reboot
