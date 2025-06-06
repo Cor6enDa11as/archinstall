@@ -102,6 +102,7 @@ select_timezone() {
   fi
 
   echo -e "\033[1;33mВыберите регион:\033[0m"
+  echo""
   PS3="> "
   echo""
   echo""
@@ -132,7 +133,7 @@ select_timezone() {
 
 # === Выбор файловой системы ===
 while true; do
-  read -p                              "\033[1;33mВыберите файловую систему (ext4 или btrfs): \033[0m" FILESYSTEM
+  read -p                              "\033[1;33mВыберите файловую систему (ext4 или btrfs):\033[0m" FILESYSTEM
   case $FILESYSTEM in
     ext4|btrfs)
       break
@@ -208,6 +209,8 @@ select_timezone
 
 clear
 sleep 4
+echo""
+echo""
 show_progress 1 $total_steps "Создание разделов..."
 
 sleep 6
