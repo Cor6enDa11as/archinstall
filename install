@@ -314,7 +314,7 @@ show_progress 4 $total_steps "Настройка зеркал..."
 
 sleep 4
 check_command "pacman -S reflector --noconfirm" "Не удалось установить reflector"
-check_command "reflector --verbose --country 'Russia' --save /etc/pacman.d/mirrorlist" "Не удалось копирование"
+check_command "reflector -c 'Russia,Belarus,Germany' --save /etc/pacman.d/mirrorlist" "Не удалось копирование"
 check_command "pacman -Syy" "Не удалось обновление"
 
 show_progress 5 $total_steps "Установка системы..."
