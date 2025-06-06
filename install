@@ -1,15 +1,17 @@
 #!/bin/bash
 
-export TERM=xterm-256color
+#export TERM=xterm-256color
 setfont cyr-sun16 2>/dev/null
 
 # Функция для вывода текста по центру экрана жёлтым цветом + отступ после
 print_center() {
   local text="$1"
   local term_width=$(tput cols)
-  local padding=$(( (term_width - ${#text}) / 2 ))
+  local text_length=${#text}
+  local padding=$(( (term_width - text_length) / 2 ))
 
-  printf "%${padding}s%s%${padding}s\n" "" "$text" "" | column -t
+  # Перемещаем курсор в нужную позицию и выводим текст
+  printf "\e[${padding}C%s\n" "$text"
 }
 
 show_progress() {
@@ -52,7 +54,7 @@ show_progress() {
 
 total_steps=14
 
-print_center"УСТАНОВКА СИСТЕМЫ"
+print_center "УСТАНОВКА СИСТЕМЫ"
 
 sleep 4
 # === Переменные ===
@@ -139,28 +141,28 @@ select_timezone() {
 }
 
 # === Выбор файловой системы ===
-print_center"=== ВЫБОР ФАЙЛОВОЙ СИСТЕМЫ ==="
+print_center "=== ВЫБОР ФАЙЛОВОЙ СИСТЕМЫ ==="
 
 while true; do
-                                             read -p "\e[33mВыберите файловую систему (ext4 или btrfs):\e[0m" FILESYSTEM
+read -p "                                          \e[33mВыберите файловую систему (ext4 или btrfs):\e[0m" FILESYSTEM
   case $FILESYSTEM in
     ext4|btrfs)
       break
       ;;
     *)
-      echo "Неверный выбор. Пожалуйста, выберите ext4 или btrfs."
+      echo "                                           Неверный выбор. Пожалуйста, выберите ext4 или btrfs."
       ;;
   esac
 done
 
 # === Выбор диска ===
-print_center"=== ВЫБОР ДИСКА ==="
+print_center "=== ВЫБОР ДИСКА ==="
 
-print_center"ДОСТУПНЫЕ ДИСКИ:"
+print_center "ДОСТУПНЫЕ ДИСКИ:"
 
 lsblk -d -p -o NAME,SIZE,MODEL | grep -v "ROM\|loop\|sr0"
 
-print_center"Введите полный путь к диску (например, /dev/sda или /dev/nvme0n1)"
+print_center "Введите полный путь к диску (например, /dev/sda или /dev/nvme0n1)"
 
 read -p "> " DISK
 
@@ -173,38 +175,37 @@ sleep 4
 
 # === Размонтирование диска, если он смонтирован ===
 if mount | grep -q "$DISK"; then
-print_center"Диск $DISK смонтирован. Размонтирую его..."
+print_center "Диск $DISK смонтирован. Размонтирую его..."
 
   # Попытка рекурсивного размонтирования
   umount -R /mnt 2>/dev/null
 
   if [ $? -ne 0 ]; then
-print_center"Не удалось размонтировать диск $DISK с помощью umount -R /mnt. Пожалуйста, перезагрузите систему и попробуйте снова."
+print_center "Не удалось размонтировать диск $DISK с помощью umount -R /mnt. Пожалуйста, перезагрузите систему и попробуйте снова."
 
     exit 1
   fi
 
 sleep 4
 
-print_center"Диск $DISK успешно размонтирован."
+print_center "Диск $DISK успешно размонтирован."
 
 fi
 
 sleep 4
-print_center"=== Запрос имени пользователя, пароля и имени хоста ==="
-                                                       read -p "Введите имя пользователя: " USERNAME
+print_center "=== Запрос имени пользователя, пароля и имени хоста ==="
+read -p "                                              Введите имя пользователя: " USERNAME
 echo""
 echo""
 
-                                                    read -s -p "Введите пароль пользователя: " USER_PASSWORD
+read -s -p "                                          Введите пароль пользователя: " USER_PASSWORD
+echo""
+echo""
+read -s -p "                                           Введите пароль root: " ROOT_PASSWORD
 echo""
 echo""
 
-                                                    read -s -p "Введите пароль root: " ROOT_PASSWORD
-echo""
-echo""
-
-                                                      read -p "Введите имя хоста: " HOSTNAME
+read -p "                                              Введите имя хоста: " HOSTNAME
 echo""
 echo""
 
@@ -445,9 +446,9 @@ arch-chroot /mnt /bin/bash -c "exit"
 umount -R /mnt
 sleep 2
 
-print_center"Система успешно установлена!"
+print_center "Система успешно установлена!"
 
 sleep 4
 # === Перезагрузка ===
-print_center"Перезагрузка системы..."
+print_center "Перезагрузка системы..."
 #reboot
