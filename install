@@ -22,11 +22,11 @@ show_progress() {
   local percentage=$(( (current * 100) / total ))
 
   # Создаем строку прогресс-бара
-  local bar_length=100 # Длина прогресс-бара
+  local bar_length=150 # Длина прогресс-бара
   local filled_length=$(( (percentage * bar_length) / 100 ))
   local bar=""
   for (( i=0; i<filled_length; i++ )); do
-    bar+="${green}="${reset}
+    bar+="${green}=>>"${reset}
   done
   for (( i=filled_length; i<bar_length; i++ )); do
     bar+="${gray} ${reset}"
@@ -43,10 +43,10 @@ show_progress() {
 
 total_steps=14
 
-echo -e                                                 "\033[1;33mУстановка системы\033[0m"
+echo -e                                                 "\033[1;33mУСТАНОВКА СИСТЕМЫ\033[0m"
 echo ""
 echo ""
-
+sleep 4
 # === Переменные ===
 # Файловая система (ext4 или btrfs)
 FILESYSTEM=""
@@ -102,7 +102,6 @@ select_timezone() {
   fi
 
   echo -e "\033[1;33mВыберите регион:\033[0m"
-  echo""
   PS3="> "
   echo""
   echo""
@@ -132,8 +131,11 @@ select_timezone() {
 }
 
 # === Выбор файловой системы ===
+echo -e                                             "\n\033[1;32m=== ВЫБОР ФАЙЛОВОЙ СИСТЕМЫ ===\033[0m"
+echo""
+echo""
 while true; do
-  read -p                              "\033[1;33mВыберите файловую систему (ext4 или btrfs):\033[0m" FILESYSTEM
+  read -p                              "\e[33mВыберите файловую систему (ext4 или btrfs):\e[0m" FILESYSTEM
   case $FILESYSTEM in
     ext4|btrfs)
       break
@@ -253,9 +255,9 @@ if [ -d /sys/firmware/efi/ ]; then
   if ! blkid | grep -q "$EFI_PART: UUID="; then
    #echo "Форматирование раздела EFI ($EFI_PART) в FAT32"
     check_command "mkfs.vfat -F32 $EFI_PART" "Не удалось отформатировать раздел EFI"
-  else
-    echo "Раздел EFI ($EFI_PART) уже отформатирован"
-  fi
+ # else
+   # echo "Раздел EFI ($EFI_PART) уже отформатирован"
+ # fi
 fi
 
 if [ "$FILESYSTEM" == "ext4" ]; then
