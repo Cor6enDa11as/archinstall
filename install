@@ -4,14 +4,27 @@
 setfont cyr-sun16 2>/dev/null
 
 # Функция для вывода текста по центру экрана жёлтым цветом + отступ после
+#print_center() {
+#  local text="$1"
+#  local term_width=$(tput cols)
+#  local text_length=${#text}
+#  local padding=$(( (term_width - text_length) / 2 ))
+
+  # Перемещаем курсор в нужную позицию и выводим текст
+#  printf "\e[${padding}C%s\n" "$text"
+#}
 print_center() {
   local text="$1"
   local term_width=$(tput cols)
-  local text_length=${#text}
-  local padding=$(( (term_width - text_length) / 2 ))
+  local padding=$(( (term_width - ${#text}) / 2 ))
 
-  # Перемещаем курсор в нужную позицию и выводим текст
-  printf "\e[${padding}C%s\n" "$text"
+  # Синий цвет: \033[1;34m
+  # Сброс цвета: \033[0m
+  printf "%${padding}s\033[1;34m%s\033[0m%${padding}s\n" "" "$text" ""
+
+  # Добавляем две пустые строки
+  echo
+  echo
 }
 
 show_progress() {
@@ -144,7 +157,7 @@ select_timezone() {
 print_center "=== ВЫБОР ФАЙЛОВОЙ СИСТЕМЫ ==="
 
 while true; do
-read -p "                                          \e[33mВыберите файловую систему (ext4 или btrfs):\e[0m" FILESYSTEM
+read -p "                                          \033[1;34mВыберите файловую систему (ext4 или btrfs):\033[0m" FILESYSTEM
   case $FILESYSTEM in
     ext4|btrfs)
       break
