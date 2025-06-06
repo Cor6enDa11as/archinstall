@@ -3,6 +3,17 @@
 
 setfont cyr-sun16 2>/dev/null
 
+# Функция для вывода текста по центру экрана жёлтым цветом + отступ после
+print_center() {
+    local text="$1"
+    local term_width=$(tput cols)                     # Получаем ширину терминала
+    local text_length=${#text}                        # Длина текста
+    local padding=$(( (term_width - text_length) / 2 ))  # Вычисляем отступ слева
+
+    # Выводим текст с отступами и жёлтым цветом, затем пустую строку
+    printf "%*s\e[1;33m%s\e[0m\n\n" $padding "" "$text"  # \n\n — два переноса строки
+}
+
 show_progress() {
   local current=$1  # Текущее значение прогресса
   local total=$2    # Общее количество шагов
@@ -22,7 +33,7 @@ show_progress() {
   local percentage=$(( (current * 100) / total ))
 
   # Создаем строку прогресс-бара
-  local bar_length=130 # Длина прогресс-бара
+  local bar_length=100 # Длина прогресс-бара
   local filled_length=$(( (percentage * bar_length) / 100 ))
   local bar=""
   for (( i=0; i<filled_length; i++ )); do
@@ -43,9 +54,8 @@ show_progress() {
 
 total_steps=14
 
-echo -e                                                 "\033[1;33mУСТАНОВКА СИСТЕМЫ\033[0m"
-echo ""
-echo ""
+print_center"УСТАНОВКА СИСТЕМЫ"
+
 sleep 4
 # === Переменные ===
 # Файловая система (ext4 или btrfs)
@@ -131,11 +141,10 @@ select_timezone() {
 }
 
 # === Выбор файловой системы ===
-echo -e                                             "\n\033[1;32m=== ВЫБОР ФАЙЛОВОЙ СИСТЕМЫ ===\033[0m"
-echo""
-echo""
+print_center"=== ВЫБОР ФАЙЛОВОЙ СИСТЕМЫ ==="
+
 while true; do
-  read -p                              "\e[33mВыберите файловую систему (ext4 или btrfs):\e[0m" FILESYSTEM
+                                             read -p "\e[33mВыберите файловую систему (ext4 или btrfs):\e[0m" FILESYSTEM
   case $FILESYSTEM in
     ext4|btrfs)
       break
@@ -147,16 +156,14 @@ while true; do
 done
 
 # === Выбор диска ===
-echo -e                                             "\n\033[1;32m=== ВЫБОР ДИСКА ===\033[0m"
-echo""
-echo""
-echo -e                                              "\033[1;33mДоступные диски:\033[0m"
-echo""
-echo""
+print_center"=== ВЫБОР ДИСКА ==="
+
+print_center"ДОСТУПНЫЕ ДИСКИ:"
+
 lsblk -d -p -o NAME,SIZE,MODEL | grep -v "ROM\|loop\|sr0"
-echo -e                                           "\n\033[1;33mВведите полный путь к диску (например, /dev/sda или /dev/nvme0n1):\033[0m"
-echo""
-echo""
+
+print_center"Введите полный путь к диску (например, /dev/sda или /dev/nvme0n1)"
+
 read -p "> " DISK
 
 # === Проверка существования диска ===
@@ -168,40 +175,38 @@ sleep 4
 
 # === Размонтирование диска, если он смонтирован ===
 if mount | grep -q "$DISK"; then
-  echo -e                                        "\033[1;33mДиск $DISK смонтирован. Размонтирую его...\033[0m"
-  echo""
-  echo""
+print_center"Диск $DISK смонтирован. Размонтирую его..."
+
   # Попытка рекурсивного размонтирования
   umount -R /mnt 2>/dev/null
 
   if [ $? -ne 0 ]; then
-    echo -e "\033[1;31mНе удалось размонтировать диск $DISK с помощью umount -R /mnt. Пожалуйста, перезагрузите систему и попробуйте снова.\033[0m"
-    echo""
-    echo""
+print_center"Не удалось размонтировать диск $DISK с помощью umount -R /mnt. Пожалуйста, перезагрузите систему и попробуйте снова."
+
     exit 1
   fi
-  sleep 4
 
-  echo -e                                          "\033[1;33mДиск $DISK успешно размонтирован.\033[0m"
-  echo""
-  echo""
+sleep 4
+
+print_center"Диск $DISK успешно размонтирован."
+
 fi
 
 sleep 4
-# === Запрос имени пользователя, пароля и имени хоста ===
-read -p                                                       "Введите имя пользователя: " USERNAME
+print_center"=== Запрос имени пользователя, пароля и имени хоста ==="
+                                                       read -p "Введите имя пользователя: " USERNAME
 echo""
 echo""
 
-read -s -p                                                  "Введите пароль пользователя: " USER_PASSWORD
+                                                    read -s -p "Введите пароль пользователя: " USER_PASSWORD
 echo""
 echo""
- # Добавляем перевод строки после ввода пароля
-read -s -p                                                   "Введите пароль root: " ROOT_PASSWORD
+
+                                                    read -s -p "Введите пароль root: " ROOT_PASSWORD
 echo""
 echo""
-# Добавляем перевод строки после ввода пароля
-read -p "Введите имя хоста: " HOSTNAME
+
+                                                      read -p "Введите имя хоста: " HOSTNAME
 echo""
 echo""
 
@@ -217,8 +222,6 @@ show_progress 1 $total_steps "Создание разделов..."
 
 sleep 6
 # === Разметка диска ===
-#echo -e "\n\033[1;32m=== РАЗМЕТКА ДИСКА ===\033[0m"
-#echo -e "\033[1;33mСоздание разделов на $DISK...\033[0m"
 
 # Создание разделов с помощью parted
 check_command "parted -s $DISK mklabel msdos" "Не удалось создать таблицу разделов"
@@ -234,7 +237,7 @@ else
     EFI_PART="${DISK}1"
     ROOT_PART="${DISK}2"
 fi
-sleep 4
+
 # Проверка существования разделов
 if [ ! -b "$EFI_PART" ]; then
   echo -e "\033[1;31mРаздел EFI $EFI_PART не найден!\033[0m"
@@ -320,7 +323,7 @@ show_progress 4 $total_steps "Настройка зеркал..."
 sleep 4
 check_command "pacman -S reflector --noconfirm" "Не удалось установить reflector"
 check_command "reflector -c 'Russia,Belarus,Germany' --save /etc/pacman.d/mirrorlist" "Не удалось копирование"
-check_command "pacman -Syy" "Не удалось обновление"
+check_command "pacman -Sy" "Не удалось обновление"
 
 show_progress 5 $total_steps "Установка системы..."
 
@@ -444,9 +447,9 @@ arch-chroot /mnt /bin/bash -c "exit"
 umount -R /mnt
 sleep 2
 
-echo                                               "\033[1;33mСистема успешно установлена!\033[0m"
+print_center"Система успешно установлена!"
 
 sleep 4
 # === Перезагрузка ===
-echo "Перезагрузка системы..."
+print_center"Перезагрузка системы..."
 #reboot
