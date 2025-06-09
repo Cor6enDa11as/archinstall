@@ -70,9 +70,11 @@ show_progress() {
   local message="$3" # Сообщение, которое нужно отобразить
 
   # Цвета (ANSI escape-последовательности)
-  local blue=$'\033[1;36m'
-  local gray=$'\e[90m'
-  local reset=$'\e[0m'
+  local blue=$'\033[1;36m'   # Голубой для прогресс-бара
+  local gray=$'\e[90m'    # Серый для не заполненной части прогресс-бара
+  local yellow=$'\033[1;33m' # Желтый для процентов
+  local green=$'\033[1;32m'  # Зеленый для сообщения
+  local reset=$'\e[0m'    # Сброс цвета
 
   # Вычисляем процент завершения
   local percentage=$(( (current * 100) / total ))
@@ -101,7 +103,7 @@ show_progress() {
   done
 
   # Выводим прогресс
-  printf "\r[%s]\n%3d%% %s" "$bar" "$percentage" "$message"
+  printf "\r[%s]\n${yellow}%3d%%${reset} ${green}%s${reset}" "$bar" "$percentage" "$message"
 
   # Если это последний шаг, добавляем перенос строки
   if [ "$current" -eq "$total" ]; then
@@ -118,8 +120,8 @@ select_timezone() {
 
   PS3="> "
 
-  # Список регионов СНГ
-  REGIONS=("Europe" "Asia")
+  # Получаем список всех регионов
+  REGIONS=($(timedatectl list-timezones | awk -F'/' '{print $1}' | sort -u | grep -v '^$' | tr -d '\r'))
 
   select REGION in "${REGIONS[@]}"; do
     [[ -n $REGION ]] && break
@@ -127,25 +129,15 @@ select_timezone() {
 
   print_center "Выберите город:"
 
-  # Список городов СНГ (пример, нужно дополнить)
-  case $REGION in
-    "Europe")
-      CITIES=($(timedatectl list-timezones | grep "^Europe/" | grep -E "(Moscow|Kiev|Minsk|Simferopol)" | awk -F'/' '{print $2}' | sort -u | grep -v '^$' | tr -d '\r'))
-      ;;
-    "Asia")
-      CITIES=($(timedatectl list-timezones | grep "^Asia/" | grep -E "(Tashkent|Bishkek|Almaty|Dushanbe)" | awk -F'/' '{print $2}' | sort -u | grep -v '^$' | tr -d '\r'))
-      ;;
-    *)
-      CITIES=()
-      ;;
-  esac
+  # Получаем список всех городов для выбранного региона
+  CITIES=($(timedatectl list-timezones | grep "^$REGION/" | awk -F'/' '{print $2}' | sort -u | grep -v '^$' | tr -d '\r'))
 
   select CITY in "${CITIES[@]}"; do
     [[ -n $CITY ]] && break
   done
 
   TIMEZONE="$REGION/$CITY"
-
+  sleep 4
   print_center "Выбран часовой пояс: $TIMEZONE"
 }
 
