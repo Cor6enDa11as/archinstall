@@ -3,6 +3,16 @@
 
 setfont cyr-sun16 2>/dev/null
 
+
+ARCH_LOGO="\e[36m      /\\
+     /  \\
+    /\\   \\
+   /      \\
+  /   ,,   \\
+ /   |  |   \\
+/_-''    ''-_\\\e[0m"
+
+
 # === Функции ===
 
 # Функция для вывода текста по центру
@@ -54,33 +64,42 @@ show_progress() {
   local gray=$'\e[90m'
   local reset=$'\e[0m'
 
-  # Анимация (символы вращения)
-  local spinner=("|" "/" "-" "\\")
-  local spinner_index=$((current % ${#spinner[@]})) # Индекс текущего символа анимации
-  local animation="${spinner[$spinner_index]}"
-
   # Вычисляем процент завершения
   local percentage=$(( (current * 100) / total ))
 
+  # Получаем ширину терминала
+  local term_width=$(tput cols)
+
+  # Вычисляем максимальную длину прогресс-бара, чтобы уместиться в терминале
+  local max_bar_length=$((term_width - ${#message} - 10)) # 10 - это примерное количество символов для процентов и скобок
+
+  # Проверяем, чтобы длина прогресс-бара не была отрицательной
+  if [ "$max_bar_length" -lt 1 ]; then
+    max_bar_length=1
+  fi
+
   # Создаем строку прогресс-бара
-  local bar_length=100 # Длина прогресс-бара
-  local filled_length=$(( (percentage * bar_length) / 100 ))
+  local filled_length=$(( (percentage * max_bar_length) / 100 ))
   local bar=""
+
   for (( i=0; i<filled_length; i++ )); do
     bar+="${blue}=>"${reset}
   done
-  for (( i=filled_length; i<bar_length; i++ )); do
+
+  for (( i=filled_length; i<max_bar_length; i++ )); do
     bar+="${gray} ${reset}"
   done
 
   # Выводим прогресс
-  printf "\r%s [%s] %3d%% %s" "$animation" "$bar" "$percentage" "$message"
+  printf "\r[%s] %3d%% %s" "$bar" "$percentage" "$message"
 
   # Если это последний шаг, добавляем перенос строки
   if [ "$current" -eq "$total" ]; then
     echo ""
   fi
 }
+
+total_steps=14
 
 select_timezone() {
   print_center "=== ВЫБОР ЧАСОВОГО ПОЯСА ==="
@@ -89,8 +108,8 @@ select_timezone() {
 
   PS3="> "
 
-  # Получаем список регионов
-  REGIONS=($(timedatectl list-timezones | awk -F'/' '{print $1}'))
+  # Список регионов СНГ
+  REGIONS=("Europe" "Asia")
 
   select REGION in "${REGIONS[@]}"; do
     [[ -n $REGION ]] && break
@@ -98,7 +117,18 @@ select_timezone() {
 
   print_center "Выберите город:"
 
-  CITIES=($(timedatectl list-timezones | grep "^$REGION/" | awk -F'/' '{print $2}'))
+  # Список городов СНГ (пример, нужно дополнить)
+  case $REGION in
+    "Europe")
+      CITIES=($(timedatectl list-timezones | grep "^Europe/" | grep -E "(Moscow|Kiev|Minsk|Simferopol)" | awk -F'/' '{print $2}' | sort -u | grep -v '^$' | tr -d '\r'))
+      ;;
+    "Asia")
+      CITIES=($(timedatectl list-timezones | grep "^Asia/" | grep -E "(Tashkent|Bishkek|Almaty|Dushanbe)" | awk -F'/' '{print $2}' | sort -u | grep -v '^$' | tr -d '\r'))
+      ;;
+    *)
+      CITIES=()
+      ;;
+  esac
 
   select CITY in "${CITIES[@]}"; do
     [[ -n $CITY ]] && break
@@ -107,7 +137,6 @@ select_timezone() {
   TIMEZONE="$REGION/$CITY"
 
   print_center "Выбран часовой пояс: $TIMEZONE"
-
 }
 
 # Функция для выполнения команд в chroot и проверки результата
@@ -138,11 +167,11 @@ EFI_PARTITION_SIZE="512M"
 # Размер корневого раздела (оставшееся место)
 ROOT_PARTITION_SIZE="100%"
 
-total_steps=14
-
 print_center "УСТАНОВКА СИСТЕМЫ"
 
-sleep 4
+print_center "$ARCH_LOGO"
+
+sleep 6
 # === Выбор файловой системы ===
 print_center "=== ВЫБОР ФАЙЛОВОЙ СИСТЕМЫ ==="
 
@@ -440,7 +469,8 @@ arch-chroot /mnt /bin/bash -c "exit"
 #echo "Размонтирование /mnt..."
 umount -R /mnt
 sleep 2
-
+echo
+echo
 print_center "СИСТЕМА УСПЕШНО УСТАНОВЛЕНА!!!"
 
 sleep 4
