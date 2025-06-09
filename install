@@ -134,17 +134,16 @@ show_progress() {
   # Создаем строку прогресс-бара
   local filled_length=$(( (percentage * max_bar_length) / 100 ))
   local bar=""
-
   for (( i=0; i<filled_length; i++ )); do
-    bar+="${blue}#${reset}" # Изменили символ на "-"
+    bar+="${blue}#${reset}" # Изменили символ на "#"
   done
-
   for (( i=filled_length; i<max_bar_length; i++ )); do
     bar+="${gray} ${reset}"
   done
 
   # Выводим прогресс
-  printf "\r[%s]\n${yellow}%3d%%${reset} ${green}%s${reset}" "$bar" "$percentage" "$message"
+  printf "\r[%s]" "$bar"
+  printf "${yellow}%3d%%${reset} ${green}%s${reset}\r" "$percentage" "$message"
 
   # Если это последний шаг, добавляем перенос строки
   if [ "$current" -eq "$total" ]; then
@@ -294,7 +293,9 @@ clear
 sleep 4
 echo""
 echo""
-show_progress 1 $total_steps "Создание разделов..."
+#show_progress 1 $total_steps "Создание разделов..."
+for i in $(seq 1 $total_steps); do
+  show_progress "$i" "$total_steps" "Создание разделов... $i/$total_steps"
 
 sleep 6
 # === Разметка диска ===
@@ -324,8 +325,9 @@ if [ ! -b "$ROOT_PART" ]; then
   error_handler "Корневой раздел $ROOT_PART не найден"
 fi
 
-show_progress 2 $total_steps "Форматирование разделов..."
-
+#show_progress 2 $total_steps "Форматирование разделов..."
+for i in $(seq 1 $total_steps); do
+  show_progress "$i" "$total_steps" "Форматирование разделов.. $i/$total_steps"
 sleep 6
 # форматирование разделов
 
@@ -348,7 +350,9 @@ else
     exit 1
 fi
 
-show_progress 3 $total_steps "Монтирование разделов..."
+#show_progress 3 $total_steps "Монтирование разделов..."
+for i in $(seq 1 $total_steps); do
+  show_progress "$i" "$total_steps" "Монтирование разделов... $i/$total_steps"
 
 sleep 6
 # === Монтирование разделов ===
@@ -394,20 +398,26 @@ if [ -d /sys/firmware/efi/ ]; then
   check_command "mount $EFI_PART /mnt/boot/efi" "Не удалось смонтировать раздел EFI"
 fi
 
-show_progress 4 $total_steps "Настройка зеркал..."
+#show_progress 4 $total_steps "Настройка зеркал..."
+for i in $(seq 1 $total_steps); do
+  show_progress "$i" "$total_steps" "Настройка зеркал... $i/$total_steps"
 
 sleep 4
 check_command "pacman -S reflector --noconfirm" "Не удалось установить reflector"
 check_command "reflector -c 'Russia,Belarus,Germany' --save /etc/pacman.d/mirrorlist" "Не удалось копирование"
 check_command "pacman -Sy" "Не удалось обновление"
 
-show_progress 5 $total_steps "Установка системы..."
+#show_progress 5 $total_steps "Установка системы..."
+for i in $(seq 1 $total_steps); do
+  show_progress "$i" "$total_steps" "Установка системы... $i/$total_steps"
 
 sleep 2
 # === Установка базовой системы ===
 check_command "pacstrap -i /mnt base linux linux-firmware sudo nano networkmanager dhcpcd plasma-desktop sddm sddm-kcm gwenview dolphin kate power-profiles-daemon firefox packagekit-qt5 bluez bluez-utils konsole ark firefox firefox-i18n-ru btrfs-progs ttf-liberation noto-fonts-cjk noto-fonts-emoji intel-ucode amd-ucode  pacman-contrib grub grub-btrfs efibootmgr gst-plugins-bad gst-plugins-ugly gst-plugins-good gst-plugins-base --noconfirm" "Не удалось установить базовую систему и KDE Plasma"
 
-show_progress 6 $total_steps "Генерация fstab..."
+#show_progress 6 $total_steps "Генерация fstab..."
+for i in $(seq 1 $total_steps); do
+  show_progress "$i" "$total_steps" "Генерация fstab... $i/$total_steps"
 
 sleep 6
 # === Генерация fstab ===
@@ -415,7 +425,9 @@ check_command "genfstab -U /mnt >> /mnt/etc/fstab" "Не удалось сген
 
 # === Chroot-настройка ===
 
-show_progress 7 $total_steps "Настройка местоположения и времени системы..."
+#show_progress 7 $total_steps "Настройка местоположения и времени системы..."
+for i in $(seq 1 $total_steps); do
+  show_progress "$i" "$total_steps" "Настройка местоположения и времени системы... $i/$total_steps"
 
 sleep 6
 #echo "Настройка часового пояса..."
@@ -424,7 +436,9 @@ run_chroot "ln -sf /usr/share/zoneinfo/$TIMEZONE /etc/localtime"
 #echo "Установка аппаратных часов..."
 run_chroot "hwclock --systohc"
 
-show_progress 8 $total_steps "Локализация системы..."
+#show_progress 8 $total_steps "Локализация системы..."
+for i in $(seq 1 $total_steps); do
+  show_progress "$i" "$total_steps" "Локализация системы... $i/$total_steps"
 
 sleep 6
 #echo "Раскомментирование строк для русской локали..."
@@ -450,13 +464,17 @@ run_chroot "echo \"$HOSTNAME\" > /etc/hostname"
 run_chroot "echo \"127.0.0.1 localhost\" >> /etc/hosts"
 run_chroot "echo \"::1       localhost\" >> /etc/hosts"
 
-show_progress 9 $total_steps "Создание начального образа системы..."
+#show_progress 9 $total_steps "Создание начального образа системы..."
+for i in $(seq 1 $total_steps); do
+  show_progress "$i" "$total_steps" "Создание начального образа системы... $i/$total_steps"
 
 sleep 4
 #echo "Создание initramfs..."
 run_chroot "mkinitcpio -P"
 
-show_progress 10 $total_steps "Создание пользователя..."
+#show_progress 10 $total_steps "Создание пользователя..."
+for i in $(seq 1 $total_steps); do
+  show_progress "$i" "$total_steps" "Создание пользователя... $i/$total_steps"
 
 sleep 6
 #echo "Установка пароля root..."
@@ -471,7 +489,9 @@ run_chroot "echo \"$USERNAME:$USER_PASSWORD\" | chpasswd"
 #echo "Настройка sudo..."
 run_chroot "echo \"%wheel ALL=(ALL) ALL\" >> /etc/sudoers"
 
-show_progress 11 $total_steps "Настройка пакетного менеджера..."
+#show_progress 11 $total_steps "Настройка пакетного менеджера..."
+for i in $(seq 1 $total_steps); do
+  show_progress "$i" "$total_steps" "Настройка пакетного менеджера... $i/$total_steps"
 
 sleep 6
 #echo "Включение multilib репозитория..."
@@ -481,7 +501,9 @@ run_chroot "sed -i 's/#Color/Color/' /etc/pacman.conf"
 run_chroot "sed -i '/^Color/a ILoveCandy' /etc/pacman.conf"
 run_chroot "pacman -Sy"
 
-show_progress 12 $total_steps "Установка и настройка загрузчика..."
+#show_progress 12 $total_steps "Установка и настройка загрузчика..."
+for i in $(seq 1 $total_steps); do
+  show_progress "$i" "$total_steps" "Установка и настройка загрузчика... $i/$total_steps"
 
 sleep 6
 
@@ -492,7 +514,9 @@ if [ -d /sys/firmware/efi/ ]; then
     run_chroot "grub-mkconfig -o /boot/grub/grub.cfg"
 fi
 
-show_progress 13 $total_steps "Запуск необходимых служб..."
+#show_progress 13 $total_steps "Запуск необходимых служб..."
+for i in $(seq 1 $total_steps); do
+  show_progress "$i" "$total_steps" "Запуск необходимых служб... $i/$total_steps"
 
 sleep 6
 #echo "Включение NetworkManager..."
@@ -501,7 +525,9 @@ run_chroot "systemctl enable NetworkManager"
 #echo "Включение SDDM..."
 run_chroot "systemctl enable sddm"
 
-show_progress 14 $total_steps "Завершение настройки..."
+#show_progress 14 $total_steps "Завершение настройки..."
+for i in $(seq 1 $total_steps); do
+  show_progress "$i" "$total_steps" "Завершение настройки... $i/$total_steps"
 
 sleep 6
 # === Выход из chroot ===
@@ -518,5 +544,5 @@ print_center "СИСТЕМА УСПЕШНО УСТАНОВЛЕНА!!!"
 
 sleep 4
 # === Перезагрузка ===
-print_center "Перезагрузка системы..."
+print_center "Перезагрузка..."
 #reboot
