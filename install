@@ -127,8 +127,7 @@ show_progress() {
   done
 
   # Выводим прогресс
-  printf "\r[%s]" "$bar"
-  printf "\n${yellow}%3d%%${reset} ${green}%s${reset}" "$percentage" "$message"
+  printf "\r[%s]\n${yellow}%3d%%${reset} ${green}%s${reset}" "$bar" "$percentage" "$message"
 
   # Если это последний шаг, добавляем перенос строки
   if [ "$current" -eq "$total" ]; then
