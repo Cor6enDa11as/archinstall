@@ -90,50 +90,50 @@ check_command() {
   fi
 }
 
-progress_bar() {
-    local current=$1
-    local total=$2
-    local message=${3:-""}
-    local width=${4:-50}  # по умолчанию 50 символов
+show_progress() {
+  local current=$1  # Текущее значение прогресса
+  local total=$2    # Общее количество шагов
+  local message="$3" # Сообщение, которое нужно отобразить
 
-    # Вычисляем процент выполнения
-    local percent=$((current * 100 / total))
-    # Вычисляем количество заполненных символов
-    local filled=$((current * width / total))
+  # Цвета (ANSI escape-последовательности)
+  local blue=$'\033[1;36m'   # Голубой для прогресс-бара
+  local yellow=$'\033[1;33m' # Желтый для процентов
+  local green=$'\033[1;32m'  # Зеленый для сообщения
+  local reset=$'\e[0m'    # Сброс цвета
+  local gray=$'\e[90m'    # Серый для не заполненной части прогресс-бара
 
-    # Создаем строку прогресс-бара
-    local bar="["
-    for ((i = 0; i < width; i++)); do
-        if [ $i -lt $filled ]; then
-            bar+="="
-        else
-            bar+=" "
-        fi
-    done
-    bar+="]"
+  # Вычисляем процент завершения
+  local percentage=$(( (current * 100) / total ))
 
-    # Очищаем строку и выводим прогресс-бар и сообщение
-    echo -ne "\r\033[K"  # очистка текущей строки
-    echo -ne "$bar\n"     # прогресс-бар с переводом строки
-    echo -ne "\r\033[1A"  # поднимаем курсор на строку вверх
+  # Получаем ширину терминала
+  local term_width=$(tput cols)
 
-    # Выводим сообщение и процент на второй строке
-    if [ -n "$message" ]; then
-        echo -ne "\r\033[K$message - $percent%\n"
-    else
-        echo -ne "\r\033[K$percent%\n"
-    fi
+  # Вычисляем максимальную длину прогресс-бара
+  local max_bar_length=$((term_width - 15)) # Увеличили отступ до 15
 
-    # Возвращаем курсор на место прогресс-бара
-    echo -ne "\r\033[1A"
+  # Проверяем, чтобы длина прогресс-бара не была отрицательной
+  if [ "$max_bar_length" -lt 1 ]; then
+    max_bar_length=1
+  fi
 
-    # Если прогресс завершен, переводим строку
-    if [ $current -eq $total ]; then
-        echo -ne "\r\033[K"  # очистка прогресс-бара
-        echo -ne "\r\033[1B"  # опускаем курсор на строку вниз
-        echo -ne "\r\033[K"  # очистка строки с процентом
-        echo  # финальный перевод строки
-    fi
+  # Создаем строку прогресс-бара
+  local filled_length=$(( (percentage * max_bar_length) / 100 ))
+  local bar=""
+  for (( i=0; i<filled_length; i++ )); do
+    bar+="${blue}#${reset}" # Изменили символ на "#"
+  done
+  for (( i=filled_length; i<max_bar_length; i++ )); do
+    bar+="${gray} ${reset}"
+  done
+
+  # Выводим прогресс
+  printf "\r[%s]" "$bar"
+  printf "\n${yellow}%3d%%${reset} ${green}%s${reset}" "$percentage" "$message"
+
+  # Если это последний шаг, добавляем перенос строки
+  if [ "$current" -eq "$total" ]; then
+    echo ""
+  fi
 }
 
 select_timezone() {
@@ -276,9 +276,13 @@ clear
 sleep 2
 echo""
 echo""
-for i in {1..100}; do
+
+total_steps=14
+
+current_step=1
+show_progress "$current_step" "$total_steps" "Разметка диска..."
+
 sleep 2
-progress_bar $i 100 "Понеслась ... Жди..."
 # === Разметка диска ===
 
 # Создание разделов с помощью parted
@@ -306,6 +310,9 @@ if [ ! -b "$ROOT_PART" ]; then
   error_handler "Корневой раздел $ROOT_PART не найден"
 fi
 
+current_step=2
+show_progress "$current_step" "$total_steps" "Форматирование разделов..."
+
 # форматирование разделов
 
 if [ -d /sys/firmware/efi/ ]; then
@@ -326,6 +333,9 @@ else
     echo "Неподдерживаемая файловая система: $FILESYSTEM"
     exit 1
 fi
+
+current_step=3
+show_progress "$current_step" "$total_steps" "Монтирование разделов..."
 
 sleep 4
 # === Монтирование разделов ===
@@ -371,20 +381,33 @@ if [ -d /sys/firmware/efi/ ]; then
   check_command "mount $EFI_PART /mnt/boot/efi" "Не удалось смонтировать раздел EFI"
 fi
 
+current_step=4
+show_progress "$current_step" "$total_steps" "Настройка зеркал..."
+
 sleep 4
 check_command "pacman -S reflector --noconfirm" "Не удалось установить reflector"
 check_command "reflector -c 'Russia,Belarus,Germany' --save /etc/pacman.d/mirrorlist" "Не удалось копирование"
 check_command "pacman -Sy" "Не удалось обновление"
+
+current_step=5
+show_progress "$current_step" "$total_steps" "Установка системы и нужных пакетов..."
 
 sleep 2
 # === Установка базовой системы ===
 check_command "pacstrap -i /mnt base linux linux-firmware sudo nano networkmanager dhcpcd plasma-desktop sddm sddm-kcm gwenview dolphin kate power-profiles-daemon firefox packagekit-qt5 bluez bluez-utils konsole ark firefox firefox-i18n-ru btrfs-progs ttf-liberation noto-fonts-cjk noto-fonts-emoji intel-ucode amd-ucode  pacman-contrib grub grub-btrfs efibootmgr gst-plugins-bad gst-plugins-ugly gst-plugins-good gst-plugins-base --noconfirm" "Не удалось установить базовую систему и KDE Plasma"
 
 sleep 2
+
+current_step=6
+show_progress "$current_step" "$total_steps" "Генерация fstab..."
+
 # === Генерация fstab ===
 check_command "genfstab -U /mnt >> /mnt/etc/fstab" "Не удалось сгенерировать fstab"
 
 # === Chroot-настройка ===
+
+current_step=7
+show_progress "$current_step" "$total_steps" "Настройка местоположения и часов..."
 
 sleep 2
 #echo "Настройка часового пояса..."
@@ -392,6 +415,9 @@ run_chroot "ln -sf /usr/share/zoneinfo/$TIMEZONE /etc/localtime"
 
 #echo "Установка аппаратных часов..."
 run_chroot "hwclock --systohc"
+
+current_step=8
+show_progress "$current_step" "$total_steps" "Локализация системы..."
 
 sleep 2
 #echo "Раскомментирование строк для русской локали..."
@@ -417,9 +443,15 @@ run_chroot "echo \"$HOSTNAME\" > /etc/hostname"
 run_chroot "echo \"127.0.0.1 localhost\" >> /etc/hosts"
 run_chroot "echo \"::1       localhost\" >> /etc/hosts"
 
+current_step=9
+show_progress "$current_step" "$total_steps" "Создаем начальный образ системы..."
+
 sleep 2
 #echo "Создание initramfs..."
 run_chroot "mkinitcpio -P"
+
+current_step=10
+show_progress "$current_step" "$total_steps" "Создаем пользователя..."
 
 #echo "Установка пароля root..."
 run_chroot "echo \"root:$ROOT_PASSWORD\" | chpasswd"
@@ -433,6 +465,9 @@ run_chroot "echo \"$USERNAME:$USER_PASSWORD\" | chpasswd"
 #echo "Настройка sudo..."
 run_chroot "echo \"%wheel ALL=(ALL) ALL\" >> /etc/sudoers"
 
+current_step=11
+show_progress "$current_step" "$total_steps" "Настройка пакетного менеджера..."
+
 sleep 2
 #echo "Включение multilib репозитория..."
 run_chroot "sed -i '/^#\[multilib\]/,/^#Include/ s/^#//' /etc/pacman.conf"
@@ -440,6 +475,9 @@ run_chroot "sed -i '/^#\[multilib\]/,/^#Include/ s/^#//' /etc/pacman.conf"
 run_chroot "sed -i 's/#Color/Color/' /etc/pacman.conf"
 run_chroot "sed -i '/^Color/a ILoveCandy' /etc/pacman.conf"
 run_chroot "pacman -Sy"
+
+current_step=12
+show_progress "$current_step" "$total_steps" "Установка и настройка загрузчика..."
 
 sleep 2
 
@@ -450,12 +488,18 @@ if [ -d /sys/firmware/efi/ ]; then
     run_chroot "grub-mkconfig -o /boot/grub/grub.cfg"
 fi
 
+current_step=13
+show_progress "$current_step" "$total_steps" "Включаем необходимые службы..."
+
 sleep 2
 #echo "Включение NetworkManager..."
 run_chroot "systemctl enable NetworkManager"
 
 #echo "Включение SDDM..."
 run_chroot "systemctl enable sddm"
+
+current_step=14
+show_progress "$current_step" "$total_steps" "Завершаем настройку..."
 
 sleep 2
 # === Выход из chroot ===
@@ -468,9 +512,7 @@ umount -R /mnt
 sleep 2
 echo
 echo
-#progress_bar $i 100 "Понеслась ... Жди..."
-done
-echo
+
 print_center "СИСТЕМА УСПЕШНО УСТАНОВЛЕНА!!!"
 
 sleep 2
