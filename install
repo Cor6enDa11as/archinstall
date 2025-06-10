@@ -278,6 +278,7 @@ echo""
 echo""
 for i in {1..100}; do
 sleep 2
+progress_bar $i 100 "Понеслась ... Жди..."
 # === Разметка диска ===
 
 # Создание разделов с помощью parted
@@ -467,7 +468,7 @@ umount -R /mnt
 sleep 2
 echo
 echo
-progress_bar $i 100 "Понеслась ... Жди..."
+#progress_bar $i 100 "Понеслась ... Жди..."
 done
 echo
 print_center "СИСТЕМА УСПЕШНО УСТАНОВЛЕНА!!!"
