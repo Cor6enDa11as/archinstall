@@ -123,9 +123,9 @@ show_progress() {
     bar+="${blue}#${reset}" # Изменили символ на "#"
   done
   for (( i=filled_length; i<max_bar_length; i++ )); do
-    bar+="${gray} ${reset}"
+    bar+="${gray}-${reset}"
   done
-
+sleep 2
   # Выводим прогресс
   printf "\r[%s]\n${yellow}%3d%%${reset} ${green}%s${reset}" "$bar" "$percentage" "$message"
 
@@ -191,6 +191,7 @@ EFI_PARTITION_SIZE="512M"
 # Размер корневого раздела (оставшееся место)
 ROOT_PARTITION_SIZE="100%"
 
+clear
 print_center "УСТАНОВКА СИСТЕМЫ"
 
 print_center "$ARCH_LOGO"
