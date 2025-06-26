@@ -21,6 +21,7 @@ BTRFS_OPTIONS="rw,noatime,compress=zstd:2,ssd,space_cache=v2,discard=async"
 EXT4_OPTIONS="noatime,discard,defaults"
 HOME=""
 FILESYSTEM_HOME=""
+SWAP=""
 # =Функции=
 
 # Функция для вывода многострочного текста по центру с цветом
