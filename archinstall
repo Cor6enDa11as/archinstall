@@ -126,15 +126,17 @@ check_command "mount "$ROOT" /mnt" "Не удалось смонтировать
 
         echo "Монтируем подтома Btrfs"
 check_command "mount -o $BTRFS_OPTIONS,subvol=@ "$ROOT" /mnt"  "Не удалось смонтировать подтом @"
-        mkdir -p /mnt/{var,var/cache,.snapshots,var/log}
+        mkdir -p /mnt/{var,.snapshots}
 
 check_command "mount -o $BTRFS_OPTIONS,subvol=@snapshots "$ROOT" /mnt/.snapshots" "Не удалось смонтировать подтом @snapshots"
 check_command "mount -o $BTRFS_OPTIONS,subvol=@var "$ROOT" /mnt/var"  "Не удалось смонтировать подтом @var"
+mkdir -p /mnt/{var/log,var/cache}
 check_command "mount -o $BTRFS_OPTIONS,subvol=@log "$ROOT" /mnt/var/log" "Не удалось смонтировать подтом @log"
 check_command "mount -o $BTRFS_OPTIONS,subvol=@cache "$ROOT" /mnt/var/cache" "Не удалось смонтировать подтом @cache"
 
         # Монтируем @home ТОЛЬКО если нет отдельного раздела HOME
         if [ -z "$HOME" ]; then
+        mkdir -p /mnt/home
   check_command "mount -o $BTRFS_OPTIONS,subvol=@home "$ROOT" /mnt/home"  "Не удалось смонтировать подтом @home"
         fi
     else
