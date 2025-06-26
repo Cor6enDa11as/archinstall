@@ -102,7 +102,7 @@ mount_partitions() {
 #    local HOME=${2:-}
 #    local FILESYSTEM=$3
 #    local FILESYSTEM_HOME=${4:-}
-
+echo "Значение HOME: [$HOME]"
     # Монтируем корневой раздел
     if [ "$FILESYSTEM" = "btrfs" ]; then
         echo "Форматируем корневой раздел $ROOT как Btrfs"
@@ -144,12 +144,12 @@ check_command "mount -o $BTRFS_OPTIONS,subvol=@cache "$ROOT" /mnt/var/cache" "Н
 check_command "mkfs.ext4 -F "$ROOT"" "Не удалось отформатировать раздел ROOT"
 check_command "mount -o $EXT4_OPTIONS "$ROOT" /mnt" "Не удалось смонтировать раздел ROOT"
     fi
-
+echo "Значение HOME: [$HOME]"
     # Обрабатываем домашний раздел (ЕСЛИ ОН УКАЗАН)
-    if [ -n "$HOME" ]; then
+    if [ -n "$HOME" ] && [ "$HOME" != "none" ]; then
         echo "Настройка домашнего раздела $HOME"
         mkdir -p /mnt/home
-
+echo "Значение HOME: [$HOME]"
         if [ "$FILESYSTEM_HOME" = "btrfs" ]; then
             echo "Форматируем как Btrfs с подтомом @home"
 check_command "mkfs.btrfs -f "$HOME"" "Не удалось отформатировать раздел HOME"
