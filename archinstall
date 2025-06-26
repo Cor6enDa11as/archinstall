@@ -233,11 +233,11 @@ while true; do
       ;;
   esac
 done
-
+fi
 mount_partitions
 mount_efi
 
-if [ -n "SWAP" ]; then
+if [ -n "$SWAP" ]; then
 check_command "mkswap "/dev/$SWAP""
 check_command "swapon "/dev/$SWAP""
 fi
