@@ -16,9 +16,7 @@ HOSTNAME=""
 # Диск для установки
 DISK=""
 # Размер раздела EFI
-EFI_PARTITION_SIZE="512M"
-# Размер корневого раздела (оставшееся место)
-ROOT_PARTITION_SIZE="100%"
+#ROOT_PARTITION_SIZE="100%"
 BTRFS_OPTIONS="rw,noatime,compress=zstd:2,ssd,space_cache=v2,discard=async"
 EXT4_OPTIONS="noatime,discard,defaults"
 
@@ -108,8 +106,8 @@ mount_partitions() {
     # Монтируем корневой раздел
     if [ "$FILESYSTEM" = "btrfs" ]; then
         echo "Форматируем корневой раздел $ROOT как Btrfs"
-check_command "mkfs.btrfs -f "/dev/$ROOT"" "Не удалось отформатировать раздел ROOT"
-check_command "mount "/dev/$ROOT" /mnt" "Не удалось смонтировать раздел ROOT"
+check_command "mkfs.btrfs -f "$ROOT"" "Не удалось отформатировать раздел ROOT"
+check_command "mount "$ROOT" /mnt" "Не удалось смонтировать раздел ROOT"
 
         echo "Создаем обязательные подтома Btrfs"
         btrfs subvolume create /mnt/@
@@ -127,22 +125,22 @@ check_command "mount "/dev/$ROOT" /mnt" "Не удалось смонтиров�
         umount /mnt
 
         echo "Монтируем подтома Btrfs"
-check_command "mount -o $BTRFS_OPTIONS,subvol=@ "/dev/$ROOT" /mnt"  "Не удалось смонтировать подтом @"
+check_command "mount -o $BTRFS_OPTIONS,subvol=@ "$ROOT" /mnt"  "Не удалось смонтировать подтом @"
         mkdir -p /mnt/{var,var/cache,.snapshots,var/log}
 
-check_command "mount -o $BTRFS_OPTIONS,subvol=@snapshots "/dev/$ROOT" /mnt/.snapshots" "Не удалось смонтировать подтом @snapshots"
-check_command "mount -o $BTRFS_OPTIONS,subvol=@var "/dev/$ROOT" /mnt/var"  "Не удалось смонтировать подтом @var"
-check_command "mount -o $BTRFS_OPTIONS,subvol=@log "/dev/$ROOT" /mnt/var/log" "Не удалось смонтировать подтом @log"
-check_command "mount -o $BTRFS_OPTIONS,subvol=@cache "/dev/$ROOT" /mnt/var/cache" "Не удалось смонтировать подтом @cache"
+check_command "mount -o $BTRFS_OPTIONS,subvol=@snapshots "$ROOT" /mnt/.snapshots" "Не удалось смонтировать подтом @snapshots"
+check_command "mount -o $BTRFS_OPTIONS,subvol=@var "$ROOT" /mnt/var"  "Не удалось смонтировать подтом @var"
+check_command "mount -o $BTRFS_OPTIONS,subvol=@log "$ROOT" /mnt/var/log" "Не удалось смонтировать подтом @log"
+check_command "mount -o $BTRFS_OPTIONS,subvol=@cache "$ROOT" /mnt/var/cache" "Не удалось смонтировать подтом @cache"
 
         # Монтируем @home ТОЛЬКО если нет отдельного раздела HOME
         if [ -z "$HOME" ]; then
-  check_command "mount -o $BTRFS_OPTIONS,subvol=@home "/dev/$ROOT" /mnt/home"  "Не удалось смонтировать подтом @home"
+  check_command "mount -o $BTRFS_OPTIONS,subvol=@home "$ROOT" /mnt/home"  "Не удалось смонтировать подтом @home"
         fi
     else
         echo "Форматируем корневой раздел $ROOT как ext4"
-check_command "mkfs.ext4 -F "/dev/$ROOT"" "Не удалось отформатировать раздел ROOT"
-check_command "mount -o $EXT4_OPTIONS "/dev/$ROOT" /mnt" "Не удалось смонтировать раздел ROOT"
+check_command "mkfs.ext4 -F "$ROOT"" "Не удалось отформатировать раздел ROOT"
+check_command "mount -o $EXT4_OPTIONS "$ROOT" /mnt" "Не удалось смонтировать раздел ROOT"
     fi
 
     # Обрабатываем домашний раздел (ЕСЛИ ОН УКАЗАН)
@@ -152,15 +150,15 @@ check_command "mount -o $EXT4_OPTIONS "/dev/$ROOT" /mnt" "Не удалось с
 
         if [ "$FILESYSTEM_HOME" = "btrfs" ]; then
             echo "Форматируем как Btrfs с подтомом @home"
-check_command "mkfs.btrfs -f "/dev/$HOME"" "Не удалось отформатировать раздел HOME"
-check_command "mount "/dev/$HOME" /mnt/home" "Не удалось смонтировать раздел HOME"
+check_command "mkfs.btrfs -f "$HOME"" "Не удалось отформатировать раздел HOME"
+check_command "mount "$HOME" /mnt/home" "Не удалось смонтировать раздел HOME"
             btrfs subvolume create /mnt/home/@home
             umount /mnt/home
-check_command "mount -o $BTRFS_OPTIONS,subvol=@home "/dev/$HOME" /mnt/home" "Не удалось смонтировать подтом @home"
+check_command "mount -o $BTRFS_OPTIONS,subvol=@home "$HOME" /mnt/home" "Не удалось смонтировать подтом @home"
         else
             echo "Форматируем как ext4"
-check_command "mkfs.ext4 -F "/dev/$HOME"" "Не удалось отформатировать раздел HOME"
-check_command "mount -o $EXT4_OPTIONS "/dev/$HOME" /mnt/home" "Не удалось смонтировать раздел HOME"
+check_command "mkfs.ext4 -F "$HOME"" "Не удалось отформатировать раздел HOME"
+check_command "mount -o $EXT4_OPTIONS "$HOME" /mnt/home" "Не удалось смонтировать раздел HOME"
         fi
     fi
 
@@ -239,8 +237,8 @@ mount_partitions
 mount_efi
 
 if [ -n "$SWAP" ]; then
-check_command "mkswap "/dev/$SWAP""
-check_command "swapon "/dev/$SWAP""
+check_command "mkswap "$SWAP""
+check_command "swapon "$SWAP""
 fi
 }
 
@@ -273,6 +271,7 @@ fi
 
 check_partitions
 echo "Выбранная файловая система: $FILESYSTEM"
+lsblk -f
 mount_partitions
 mount_efi
 }
