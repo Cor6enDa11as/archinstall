@@ -272,6 +272,7 @@ else
 fi
 
 check_partitions
+echo "Выбранная файловая система: $FILESYSTEM"
 mount_partitions
 mount_efi
 }
