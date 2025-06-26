@@ -22,7 +22,7 @@ ROOT_PARTITION_SIZE="100%"
 BTRFS_OPTIONS="rw,noatime,compress=zstd:2,ssd,space_cache=v2,discard=async"
 EXT4_OPTIONS="noatime,discard,defaults"
 
-=Функции=
+# =Функции=
 
 # Функция для вывода многострочного текста по центру с цветом
 print_center() {
@@ -92,7 +92,6 @@ if [ -d /sys/firmware/efi/ ]; then
    print_center "Раздел EFI ($EFI) уже отформатирован"
   fi
 fi
-
 # Монтирование раздела EFI
 if [ -d /sys/firmware/efi/ ]; then
   mkdir -p /mnt/boot/efi
