@@ -19,7 +19,8 @@ DISK=""
 #ROOT_PARTITION_SIZE="100%"
 BTRFS_OPTIONS="rw,noatime,compress=zstd:2,ssd,space_cache=v2,discard=async"
 EXT4_OPTIONS="noatime,discard,defaults"
-
+HOME=""
+FILESYSTEM_HOME=""
 # =Функции=
 
 # Функция для вывода многострочного текста по центру с цветом
@@ -146,7 +147,7 @@ check_command "mount -o $EXT4_OPTIONS "$ROOT" /mnt" "Не удалось смо�
     fi
 echo "Значение HOME: [$HOME]"
     # Обрабатываем домашний раздел (ЕСЛИ ОН УКАЗАН)
-    if [ -n "$HOME" ] && [ "$HOME" != "none" ]; then
+    if [ -n "$HOME" ]; then
         echo "Настройка домашнего раздела $HOME"
         mkdir -p /mnt/home
 echo "Значение HOME: [$HOME]"
