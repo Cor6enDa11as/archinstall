@@ -100,10 +100,10 @@ fi
 }
 
 mount_partitions() {
-    local ROOT=$1
-    local HOME=${2:-}
-    local FILESYSTEM=$3
-    local FILESYSTEM_HOME=${4:-}
+#    local ROOT=$1
+#    local HOME=${2:-}
+#    local FILESYSTEM=$3
+#    local FILESYSTEM_HOME=${4:-}
 
     # Монтируем корневой раздел
     if [ "$FILESYSTEM" = "btrfs" ]; then
