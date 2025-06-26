@@ -72,12 +72,12 @@ check_command() {
 
 # Проверка необходимых разделов
 check_partitions() {
-
-    if [[ ! -b "{$EFI}" ]]; then
+sleep 1
+    if [[ ! -b "$EFI" ]]; then
     error_handler "Раздел EFI $EFI не найден"
     fi
 
-    if [[ ! -b "{$ROOT}" ]]; then
+    if [[ ! -b "$ROOT" ]]; then
      error_handler "Раздел ROOT $ROOT не найден"1
     fi
 }
