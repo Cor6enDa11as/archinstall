@@ -395,7 +395,7 @@ show_progress "$current_step" "$total_steps" "Установка системы 
 
 sleep 2
 # === Установка базовой системы ===
-check_command "pacstrap -i /mnt base linux linux-firmware sudo nano networkmanager dhcpcd plasma-desktop sddm sddm-kcm gwenview dolphin kate power-profiles-daemon firefox packagekit-qt5 bluez bluez-utils konsole ark firefox firefox-i18n-ru btrfs-progs ttf-liberation noto-fonts-cjk noto-fonts-emoji intel-ucode amd-ucode  pacman-contrib grub grub-btrfs efibootmgr gst-plugins-bad gst-plugins-ugly gst-plugins-good gst-plugins-base --noconfirm" "Не удалось установить базовую систему и KDE Plasma"
+check_command "pacstrap -i /mnt base linux linux-firmware sudo nano networkmanager dhcpcd plasma-desktop sddm sddm-kcm gwenview dolphin kate power-profiles-daemon firefox packagekit-qt5 bluez bluez-utils konsole ark firefox firefox-i18n-ru btrfs-progs ttf-liberation noto-fonts-cjk noto-fonts-emoji intel-ucode amd-ucode  pacman-contrib grub grub-btrfs efibootmgr gst-plugins-bad gst-plugins-ugly gst-plugins-good gst-plugins-base dosfstools mtools --noconfirm" "Не удалось установить базовую систему и KDE Plasma"
 
 sleep 2
 
