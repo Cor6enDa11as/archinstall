@@ -220,7 +220,7 @@ read -p "" SWAP
 check_partitions
 filesystem_root
 
-if [ ! -e "$HOME" ]; then
+if [ -n "$HOME" ]; then
 
 print_center "Выбери файловую систему для домашнего раздела"
 
