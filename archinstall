@@ -181,32 +181,86 @@ done
 manual_partition() {
 
 print_center "=== Ручная разметка ==="
-print_center "Рекомендации:"
-print_center "Создайте GPT таблицу разделов"
-print_center "BOOT раздел: тип - EFI System (~512MiB)"
-print_center "SWAP раздел: тип - Linux swap (по желанию)"
-print_center "HOME раздел: тип - Linux filesystem (по желанию)"
-print_center "ROOT раздел: тип - Linux filesystem (Не менее 20 гб)"
-sleep 10
-cfdisk "$DISK"
+#print_center "Рекомендации:"
+#print_center "Создайте GPT таблицу разделов"
+#print_center "BOOT раздел: тип - EFI System (~512MiB)"
+#print_center "SWAP раздел: тип - Linux swap (по желанию)"
+#print_center "HOME раздел: тип - Linux filesystem (по желанию)"
+#print_center "ROOT раздел: тип - Linux filesystem (Не менее 20 гб)"
+#sleep 10
+#cfdisk "$DISK"
 
-print_center "Созданные разделы"
+#print_center "Созданные разделы"
 
-lsblk -f $DISK
+#lsblk -f $DISK
 
-print_center "Введите разделы которые вы создали (например sda1 или nvme0n1p1)"
+#print_center "Введите разделы которые вы создали (например sda1 или nvme0n1p1)"
 
-print_center "Введите загрузочный раздел(EFI System (~512MiB)): "
-read -p "" EFI
+#print_center "Введите загрузочный раздел(EFI System (~512MiB)): "
+#read -p "" EFI
 
-print_center "Введите корневой раздел: "
-read -p "" ROOT
+#print_center "Введите корневой раздел: "
+#read -p "" ROOT
 
-print_center "Домашний раздел (оставьте пустым, если нет): "
-read -p "" HOME
+#print_center "Домашний раздел (оставьте пустым, если нет): "
+#read -p "" HOME
 
-print_center "Раздел подкачки (оставьте пустым, если нет): "
-read -p "" SWAP
+#print_center "Раздел подкачки (оставьте пустым, если нет): "
+#read -p "" SWAP
+
+# Запрос параметров
+print_center "Размер EFI (рекомендуется 512M, обязательно):"
+while true; do
+    read -p " > " EFI_SIZE
+    [[ -n "$EFI_SIZE" ]] && break
+    print_center "Поле обязательно к заполнению!"
+done
+
+print_center "Размер ROOT (например 50G, обязательно):"
+while true; do
+    read -p " > " ROOT_SIZE
+    [[ -n "$ROOT_SIZE" ]] && break
+    print_center "Поле обязательно к заполнению!"
+done
+
+print_center "Размер HOME (нажмите Enter чтобы пропустить):"
+read -p " > " HOME_SIZE
+if [[ -n "$HOME_SIZE" ]]; then
+    CREATE_HOME="y"
+else
+    CREATE_HOME="n"
+fi
+
+print_center "Размер SWAP (нажмите Enter чтобы пропустить):"
+read -p " > " SWAP_SIZE
+if [[ -n "$SWAP_SIZE" ]]; then
+    CREATE_SWAP="y"
+else
+    CREATE_SWAP="n"
+fi
+
+# Создание разделов
+print_center "Создание разделов..."
+{
+    echo "label: gpt"
+    echo "size=$EFI_SIZE, type=uefi, name=efi, bootable"
+    echo "size=$ROOT_SIZE, type=linux-filesystem, name=root"
+    [[ "$CREATE_HOME" == "y" ]] && echo "size=$HOME_SIZE, type=linux-filesystem, name=home"
+    [[ "$CREATE_SWAP" == "y" ]] && echo "size=$SWAP_SIZE, type=linux-swap, name=swap"
+} | sudo sfdisk "$DISK"
+
+# Определяем префикс разделов
+if [[ $DISK =~ "nvme" ]]; then
+    EFI="${DISK}p1"
+    ROOT="${DISK}p2"
+    HOME="${DISK}p3"
+    SWAP="${DISK}p4"
+else
+    EFI="${DISK}1"
+    ROOT="${DISK}2"
+    HOME="${DISK}3"
+    SWAP="${DISK}4"
+fi
 
 check_partitions
 filesystem_root
@@ -231,7 +285,7 @@ fi
 mount_partitions
 mount_efi
 
-if [ -n "$SWAPP" ]; then
+if [ -n "$SWAP" ]; then
 check_command "mkswap "$SWAP"" "Не удалось создать подкачку в разделе $SWAP"
 check_command "swapon "$SWAP"" "Не удалось запустить подкачку в разделе $SWAP"
 fi
@@ -387,11 +441,11 @@ clear
         esac
     done
 
-#sleep 2
-#check_command "pacman -Syy reflector archlinux-keyring --noconfirm" "Не удалось установить reflector"
-#sleep 2
-#check_command "reflector -c 'Belarus,Russia,Germany' --save /etc/pacman.d/mirrorlist" "Не удалось копирование в mirrorlist"
-#check_command "pacman -Sy" "Не удалось обновление"
+sleep 2
+check_command "pacman -Syy reflector archlinux-keyring --noconfirm" "Не удалось установить reflector"
+sleep 2
+check_command "reflector -c 'Belarus,Russia,Germany' --save /etc/pacman.d/mirrorlist" "Не удалось копирование в mirrorlist"
+check_command "pacman -Sy" "Не удалось обновление"
 sleep 4
 
 # === Установка базовой системы ===
