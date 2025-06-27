@@ -84,16 +84,7 @@ sleep 1
 
 mount_efi() {
 if [ -d /sys/firmware/efi/ ]; then
-  # Проверяем, отформатирован ли раздел EFI
-  if ! blkid | grep -q "$EFI: UUID="; then
-   #echo "Форматирование раздела EFI ($EFI_PART) в FAT32"
-    check_command "mkfs.vfat -F32 $EFI" "Не удалось отформатировать раздел EFI"
- else
-   print_center "Раздел EFI ($EFI) уже отформатирован"
-  fi
-fi
-# Монтирование раздела EFI
-if [ -d /sys/firmware/efi/ ]; then
+  check_command "mkfs.vfat -F32 $EFI" "Не удалось отформатировать раздел EFI"
   mkdir -p /mnt/boot/efi
   check_command "mount $EFI /mnt/boot/efi" "Не удалось смонтировать раздел EFI"
 fi
