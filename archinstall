@@ -178,7 +178,7 @@ done
 }
 
 wipe_disk() {
-
+    swapoff -a
     # Удаляем все подписи файловых систем
     sudo wipefs -a "$DISK"
 
