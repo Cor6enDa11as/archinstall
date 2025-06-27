@@ -177,6 +177,20 @@ while true; do
 done
 }
 
+wipe_disk() {
+
+    # Удаляем все подписи файловых систем
+    sudo wipefs -a "$DISK"
+
+    # Удаляем таблицу разделов (GPT/MBR)
+    sudo sgdisk -Z "$DISK"
+
+    # Применяем изменения
+    sudo partprobe "$DISK"
+
+    echo "Диск $DISK успешно очищен"
+}
+
 # Ручная разметка (cfdisk)
 manual_partition() {
 
@@ -239,6 +253,8 @@ else
     CREATE_SWAP="n"
 fi
 
+wipe_disk
+sleep 4
 # Создание разделов
 print_center "Создание разделов..."
 {
@@ -304,10 +320,16 @@ filesystem_root
 #check_command "parted -s $DISK mkpart primary ext4 ${EFI_PARTITION_SIZE} 100%" "Не удалось создать корневой раздел"
 
  # Разметка через parted
-check_command "parted -s "$DISK" mklabel gpt" "Не удалось создать таблицу разделов"
-check_command "parted -s "$DISK" mkpart "EFI" fat32 1MiB 513MiB" "Не удалось создать раздел EFI"
-check_command "parted -s "$DISK" set 1 esp on" "Не удалось установить флаг boot на раздел EFI"
-check_command "parted -s "$DISK" mkpart "ROOT" ext4 513MiB 100%" "Не удалось создать корневой раздел"
+#check_command "parted -s "$DISK" mklabel gpt" "Не удалось создать таблицу разделов"
+#check_command "parted -s "$DISK" mkpart "EFI" fat32 1MiB 513MiB" "Не удалось создать раздел EFI"
+#check_command "parted -s "$DISK" set 1 esp on" "Не удалось установить флаг boot на раздел EFI"
+#check_command "parted -s "$DISK" mkpart "ROOT" ext4 513MiB 100%" "Не удалось создать корневой раздел"
+wipe_disk
+sleep 4
+# Схема разметки GPT
+echo "label: gpt
+size=512M, type=uefi, name=efi, bootable
+type=linux-filesystem, name=root" | sudo sfdisk "$DISK"
 
 # === Определение разделов ===
 if [[ $DISK =~ "nvme" ]]; then
@@ -363,6 +385,10 @@ run_chroot() {
         exit 1
     fi
 }
+
+
+
+
 
 clear
 print_center "ARCH LINUX"
