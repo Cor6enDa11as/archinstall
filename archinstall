@@ -231,9 +231,9 @@ fi
 mount_partitions
 mount_efi
 
-if [ -n "$SWAP" ]; then
-check_command "mkswap "$SWAP""
-check_command "swapon "$SWAP""
+if [ -n "$SWAPP" ]; then
+check_command "mkswap "$SWAP"" "Не удалось создать подкачку в разделе $SWAP"
+check_command "swapon "$SWAP"" "Не удалось запустить подкачку в разделе $SWAP"
 fi
 }
 
