@@ -388,9 +388,9 @@ clear
     done
 
 sleep 2
-check_command "pacman -Sy reflector --noconfirm" "Не удалось установить reflector"
+check_command "pacman -Syy reflector archlinux-keyring --noconfirm" "Не удалось установить reflector"
 sleep 2
-check_command "reflector -c 'Belarus' --save /etc/pacman.d/mirrorlist" "Не удалось копирование в mirrorlist"
+check_command "reflector -c 'Belarus,Russia,Germany' --save /etc/pacman.d/mirrorlist" "Не удалось копирование в mirrorlist"
 check_command "pacman -Sy" "Не удалось обновление"
 sleep 6
 
