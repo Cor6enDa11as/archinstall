@@ -91,12 +91,7 @@ fi
 }
 
 mount_partitions() {
-#    local ROOT=$1
-#    local HOME=${2:-}
-#    local FILESYSTEM=$3
-#    local FILESYSTEM_HOME=${4:-}
-echo "Значение HOME: [$HOME]"
-    # Монтируем корневой раздел
+
     if [ "$FILESYSTEM" = "btrfs" ]; then
         echo "Форматируем корневой раздел $ROOT как Btrfs"
 check_command "mkfs.btrfs -f "$ROOT"" "Не удалось отформатировать раздел ROOT"
@@ -180,47 +175,21 @@ done
 wipe_disk() {
     swapoff -a
     # Удаляем все подписи файловых систем
-    sudo wipefs -a "$DISK"
+    wipefs -a "$DISK"
 
     # Удаляем таблицу разделов (GPT/MBR)
-    sudo sgdisk -Z "$DISK"
+    sgdisk -Z "$DISK"
 
     # Применяем изменения
-    sudo partprobe "$DISK"
+    partprobe "$DISK"
 
-    echo "Диск $DISK успешно очищен"
+   print_center "Диск $DISK успешно очищен"
 }
 
 # Ручная разметка (cfdisk)
 manual_partition() {
 
 print_center "=== Ручная разметка ==="
-#print_center "Рекомендации:"
-#print_center "Создайте GPT таблицу разделов"
-#print_center "BOOT раздел: тип - EFI System (~512MiB)"
-#print_center "SWAP раздел: тип - Linux swap (по желанию)"
-#print_center "HOME раздел: тип - Linux filesystem (по желанию)"
-#print_center "ROOT раздел: тип - Linux filesystem (Не менее 20 гб)"
-#sleep 10
-#cfdisk "$DISK"
-
-#print_center "Созданные разделы"
-
-#lsblk -f $DISK
-
-#print_center "Введите разделы которые вы создали (например sda1 или nvme0n1p1)"
-
-#print_center "Введите загрузочный раздел(EFI System (~512MiB)): "
-#read -p "" EFI
-
-#print_center "Введите корневой раздел: "
-#read -p "" ROOT
-
-#print_center "Домашний раздел (оставьте пустым, если нет): "
-#read -p "" HOME
-
-#print_center "Раздел подкачки (оставьте пустым, если нет): "
-#read -p "" SWAP
 
 # Запрос параметров
 print_center "Размер EFI (рекомендуется 512M, обязательно):"
@@ -259,11 +228,11 @@ sleep 4
 print_center "Создание разделов..."
 {
     echo "label: gpt"
-    echo "size=$EFI_SIZE, type=uefi, name=efi, bootable"
-    echo "size=$ROOT_SIZE, type=linux-filesystem, name=root"
-    [[ "$CREATE_HOME" == "y" ]] && echo "size=$HOME_SIZE, type=linux-filesystem, name=home"
-    [[ "$CREATE_SWAP" == "y" ]] && echo "size=$SWAP_SIZE, type=linux-swap, name=swap"
-} | sudo sfdisk "$DISK"
+    echo "size=$EFI_SIZE, type=uefi, name=EFI, bootable"
+    echo "size=$ROOT_SIZE, type=linux-filesystem, name=ROOT"
+    [[ "$CREATE_HOME" == "y" ]] && echo "size=$HOME_SIZE, type=linux-filesystem, name=HOME"
+    [[ "$CREATE_SWAP" == "y" ]] && echo "size=$SWAP_SIZE, type=linux-swap, name=SWAP"
+} | sfdisk "$DISK"
 
 # Определяем префикс разделов
 if [[ $DISK =~ "nvme" ]]; then
@@ -271,11 +240,11 @@ if [[ $DISK =~ "nvme" ]]; then
     ROOT="${DISK}p2"
     HOME="${DISK}p3"
     SWAP="${DISK}p4"
-else
-    EFI="${DISK}1"
-    ROOT="${DISK}2"
-    HOME="${DISK}3"
-    SWAP="${DISK}4"
+#else
+#    EFI="${DISK}1"
+#    ROOT="${DISK}2"
+#    HOME="${DISK}3"
+#    SWAP="${DISK}4"
 fi
 
 check_partitions
@@ -310,39 +279,23 @@ fi
 auto_partition() {
 
 filesystem_root
-
-  # === Разметка диска ===
-
-# Создание разделов с помощью parted
-#check_command "parted -s $DISK mklabel gpt" "Не удалось создать таблицу разделов"
-#check_command "parted -s $DISK mkpart primary fat32 1MiB ${EFI_PARTITION_SIZE}" "Не удалось создать раздел EFI"
-#check_command "parted -s $DISK set 1 esp on" "Не удалось установить флаг boot на раздел EFI"
-#check_command "parted -s $DISK mkpart primary ext4 ${EFI_PARTITION_SIZE} 100%" "Не удалось создать корневой раздел"
-
- # Разметка через parted
-#check_command "parted -s "$DISK" mklabel gpt" "Не удалось создать таблицу разделов"
-#check_command "parted -s "$DISK" mkpart "EFI" fat32 1MiB 513MiB" "Не удалось создать раздел EFI"
-#check_command "parted -s "$DISK" set 1 esp on" "Не удалось установить флаг boot на раздел EFI"
-#check_command "parted -s "$DISK" mkpart "ROOT" ext4 513MiB 100%" "Не удалось создать корневой раздел"
 wipe_disk
 sleep 4
 # Схема разметки GPT
 echo "label: gpt
-size=512M, type=uefi, name=efi, bootable
-type=linux-filesystem, name=root" | sudo sfdisk "$DISK"
+size=512M, type=uefi, name=EFI, bootable
+type=linux-filesystem, name=ROOT" | sfdisk "$DISK"
 
 # === Определение разделов ===
 if [[ $DISK =~ "nvme" ]]; then
     EFI="${DISK}p1"
     ROOT="${DISK}p2"
-else
-    EFI="${DISK}1"
-    ROOT="${DISK}2"
+#else
+#    EFI="${DISK}1"
+#    ROOT="${DISK}2"
 fi
 
 check_partitions
-echo "Выбранная файловая система: $FILESYSTEM"
-lsblk -f
 mount_partitions
 mount_efi
 }
@@ -424,8 +377,6 @@ print_center "Не удалось размонтировать диск $DISK с
     exit 1
   fi
 
-sleep 4
-
 print_center "Диск $DISK успешно размонтирован."
 
 fi
@@ -455,7 +406,7 @@ clear
  print_center "Выбор режима разметки диска"
     echo
     print_center "1) Авто (2 раздела: EFI и ROOT)"
-    print_center "2) Ручное (разметка утилитой cfdisk: ROOT,EFI,HOME,SWAP)"
+    print_center "2) Ручное (разметка : ROOT,EFI,HOME,SWAP)"
     echo
 
     while true; do
