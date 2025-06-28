@@ -453,23 +453,21 @@ clear
 sleep 2
 check_command "pacman -Sy reflector --noconfirm" "Не удалось установить reflector"
 sleep 4
-check_command "reflector -p https -l 10 -f 5 -a 1 --sort rate --save /etc/pacman.d/mirrorlist" "Не удалось копирование в mirrorlist"
+reflector -c 'Russia,Belarus' --save /etc/pacman.d/mirrorlist
 check_command "pacman -Sy" "Не удалось обновление"
 sleep 4
 
 # === Установка базовой системы ===
 check_command "pacstrap -i /mnt base linux linux-firmware sudo nano networkmanager dhcpcd plasma-desktop sddm sddm-kcm gwenview dolphin kate power-profiles-daemon firefox packagekit-qt5 bluez bluez-utils konsole ark firefox firefox-i18n-ru btrfs-progs ttf-liberation noto-fonts-cjk noto-fonts-emoji intel-ucode amd-ucode  pacman-contrib grub grub-btrfs efibootmgr gst-plugins-bad gst-plugins-ugly gst-plugins-good gst-plugins-base dosfstools mtools unrar --noconfirm" "Не удалось установить базовую систему и KDE Plasma"
 
-check_command "rm -r /etc/pacman.d/mirrorlist" "Не удалось удалить  mirrorlist"
-check_command "pacman -Sy" "Не удалось обновление"
-sleep 6
+sleep 3
 # === Генерация fstab ===
 check_command "genfstab -U /mnt >> /mnt/etc/fstab" "Не удалось сгенерировать fstab"
 
-sleep 6
+
 # === Chroot-настройка ===
 
-sleep 6
+sleep 3
 #echo "Настройка часового пояса..."
 run_chroot "ln -sf /usr/share/zoneinfo/$TIMEZONE /etc/localtime"
 
