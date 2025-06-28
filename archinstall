@@ -235,16 +235,43 @@ print_center "Создание разделов..."
 } | sfdisk "$DISK"
 
 # Определяем префикс разделов
+# Обязательные разделы (EFI и ROOT)
 if [[ $DISK =~ "nvme" ]]; then
     EFI="${DISK}p1"
     ROOT="${DISK}p2"
-    HOME="${DISK}p3"
-    SWAP="${DISK}p4"
 else
     EFI="${DISK}1"
     ROOT="${DISK}2"
-    HOME="${DISK}3"
-    SWAP="${DISK}4"
+fi
+
+# Раздел HOME (если есть)
+if [[ $DISK =~ "nvme" ]]; then
+    if [[ -e "${DISK}p3" ]]; then
+        HOME="${DISK}p3"
+    else
+        HOME=""
+    fi
+else
+    if [[ -e "${DISK}3" ]]; then
+        HOME="${DISK}3"
+    else
+        HOME=""
+    fi
+fi
+
+# Раздел SWAP (если есть)
+if [[ $DISK =~ "nvme" ]]; then
+    if [[ -e "${DISK}p4" ]]; then
+        SWAP="${DISK}p4"
+    else
+        SWAP=""
+    fi
+else
+    if [[ -e "${DISK}4" ]]; then
+        SWAP="${DISK}4"
+    else
+        SWAP=""
+    fi
 fi
 
 check_partitions
