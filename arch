@@ -451,9 +451,16 @@ clear
     done
 
 sleep 2
-check_command "pacman -Syy reflector archlinux-keyring --noconfirm" "Не удалось установить reflector"
-sleep 10
-check_command "reflector -c 'Belarus,Russia' --save /etc/pacman.d/mirrorlist" "Не удалось копирование в mirrorlist"
+check_command "pacman -Sy archlinux-keyring --noconfirm" "Не удалось установить reflector"
+sleep 4
+check_command "cat > /etc/pacman.d/mirrorlist <<EOF
+## Зеркала Россия/Беларусь
+
+Server = https://mirror.yandex.ru/archlinux/\$repo/os/\$arch
+Server = http://mirror.yandex.ru/archlinux/\$repo/os/\$arch
+Server = http://ftp.byfly.by/pub/archlinux/\$repo/os/\$arch
+Server = http://mirror.datacenter.by/pub/archlinux/\$repo/os/\$arch
+EOF" "Не удалось копирование в mirrorlist"
 check_command "pacman -Sy" "Не удалось обновление"
 sleep 4
 
