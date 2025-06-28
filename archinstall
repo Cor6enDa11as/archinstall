@@ -240,11 +240,11 @@ if [[ $DISK =~ "nvme" ]]; then
     ROOT="${DISK}p2"
     HOME="${DISK}p3"
     SWAP="${DISK}p4"
-#else
-#    EFI="${DISK}1"
-#    ROOT="${DISK}2"
-#    HOME="${DISK}3"
-#    SWAP="${DISK}4"
+else
+    EFI="${DISK}1"
+    ROOT="${DISK}2"
+    HOME="${DISK}3"
+    SWAP="${DISK}4"
 fi
 
 check_partitions
@@ -290,9 +290,9 @@ type=linux-filesystem, name=ROOT" | sfdisk "$DISK"
 if [[ $DISK =~ "nvme" ]]; then
     EFI="${DISK}p1"
     ROOT="${DISK}p2"
-#else
-#    EFI="${DISK}1"
-#    ROOT="${DISK}2"
+else
+    EFI="${DISK}1"
+    ROOT="${DISK}2"
 fi
 
 check_partitions
