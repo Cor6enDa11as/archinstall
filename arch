@@ -219,6 +219,7 @@ done
 
 # Ручная разметка
 manual_partition() {
+clear
 echo""
 echo""
 print_center "=== РУЧНАЯ РАЗМЕТКА ==="
@@ -253,7 +254,7 @@ if [[ -n "$SWAP_SIZE" ]]; then
 else
     CREATE_SWAP="n"
 fi
-
+clear
 sleep 4
 # Создание разделов
 {
@@ -481,9 +482,8 @@ check_command "sgdisk -Z "$DISK"" "Не удалось удалить табли
 
     # Применяем изменения
 check_command "partprobe "$DISK"" "Не удалось синхронизировать диск"
-
 print_center "Диск $DISK успешно очищен"
-sleap 4
+sleep 4
 clear
 
 sleep 2
