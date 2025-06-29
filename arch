@@ -88,7 +88,7 @@ show_progress() {
   # Если последний шаг, добавляем перенос строки
   [ "$current" -eq "$total" ] && echo ""
 }
-total_steps=14
+total_steps=13
 
 # Функция для вывода сообщения об ошибке и завершения скрипта
 error_handler() {
