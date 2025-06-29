@@ -92,7 +92,6 @@ mount_partitions() {
 check_command "mkfs.btrfs -f "$ROOT"" "Не удалось отформатировать раздел ROOT"
 check_command "mount "$ROOT" /mnt" "Не удалось смонтировать раздел ROOT"
 
-        echo "Создаем обязательные подтома Btrfs"
 check_command "btrfs subvolume create /mnt/@" "Не удалось создать @"
 check_command "btrfs subvolume create /mnt/@snapshots" "Не удалось создать @snapshots"
 check_command "btrfs subvolume create /mnt/@var" "Не удалось создать @var"
@@ -148,10 +147,9 @@ check_command "mount -o $EXT4_OPTIONS "$HOME" /mnt/home" "Не удалось с
 }
 
 filesystem_root() {
-print_center "=== ВЫБОР ФАЙЛОВОЙ СИСТЕМЫ ==="
 
 while true; do
-  print_center "Выберите файловую систему (ext4 или btrfs):"
+  print_center "ВЫБИРИТЕ ФАЙЛОВУЮ СИСТЕМУ КОРНЕВОГО РАЗДЕЛА (EXT4 или BTRFS):"
   read FILESYSTEM
   case $FILESYSTEM in
     ext4|btrfs)
@@ -182,24 +180,24 @@ print_center "Диск $DISK успешно очищен"
 # Ручная разметка (cfdisk)
 manual_partition() {
 
-print_center "=== Ручная разметка ==="
+print_center "=== РУЧНАЯ РАЗМЕТКА ==="
 
 # Запрос параметров
-print_center "Размер EFI (рекомендуется 512M, обязательно):"
+print_center "ВВЕДИТЕ РАЗМЕР ЗАГРУЗОЧНОГО РАЗДЕЛА (EFI рекомендуется 300М-512M, обязательно):"
 while true; do
     read -p " > " EFI_SIZE
     [[ -n "$EFI_SIZE" ]] && break
     print_center "Поле обязательно к заполнению!"
 done
 
-print_center "Размер ROOT (например 50G, обязательно):"
+print_center "ВВЕДИТЕ РАЗМЕР КОРНЕВОГО РАЗДЕЛА (ROOT рекомендуется >= 20G, обязательно):"
 while true; do
     read -p " > " ROOT_SIZE
     [[ -n "$ROOT_SIZE" ]] && break
     print_center "Поле обязательно к заполнению!"
 done
 
-print_center "Размер HOME (нажмите Enter чтобы пропустить):"
+print_center "ВВЕДИТЕ РАЗМЕР ДОМАШНЕГО РАЗДЕЛА (HOME - на ваше усмотрение , нажмите Enter чтобы пропустить):"
 read -p " > " HOME_SIZE
 if [[ -n "$HOME_SIZE" ]]; then
     CREATE_HOME="y"
@@ -207,7 +205,7 @@ else
     CREATE_HOME="n"
 fi
 
-print_center "Размер SWAP (нажмите Enter чтобы пропустить):"
+print_center "ВВЕДИТЕ РАЗМЕР РАЗДЕЛА ПОДКАЧКИ (SWAP - рекомендуется в размере обьёма опер.памяти , нажмите  Enter чтобы пропустить):"
 read -p " > " SWAP_SIZE
 if [[ -n "$SWAP_SIZE" ]]; then
     CREATE_SWAP="y"
@@ -218,7 +216,6 @@ fi
 wipe_disk
 sleep 4
 # Создание разделов
-print_center "Создание разделов..."
 {
     echo "label: gpt"
     echo "size=$EFI_SIZE, type=uefi, name=EFI, bootable"
@@ -290,6 +287,7 @@ while true; do
   esac
 done
 fi
+clear
 mount_partitions
 mount_efi
 
@@ -306,9 +304,9 @@ clear
 wipe_disk
 sleep 4
 # Схема разметки GPT
-echo "label: gpt
+check_command "echo "label: gpt
 size=512M, type=uefi, name=EFI, bootable
-type=linux-filesystem, name=ROOT" | sfdisk "$DISK"
+type=linux-filesystem, name=ROOT" | sfdisk "$DISK""
 
 # === Определение разделов ===
 if [[ $DISK =~ "nvme" ]]; then
@@ -373,11 +371,11 @@ print_center "ARCH LINUX"
 # === Выбор диска ===
 print_center "=== ВЫБОР ДИСКА ==="
 
-print_center "ДОСТУПНЫЕ ДИСКИ:"
+print_center "Доступные диски:"
 
 lsblk -d -p -o NAME,SIZE,MODEL | grep -v "ROM\|loop\|sr0"
 
-print_center "Введите полный путь к диску (например, /dev/sda или /dev/nvme0n1)"
+print_center "ВВЕДИТЕ ПОЛНЫЙ ПУТЬ К ДИСКУ (например, /dev/sda или /dev/nvme0n1)"
 
 read -p "> " DISK
 
@@ -411,11 +409,11 @@ print_center "Введите имя пользователя:"
 read -p "> " USERNAME
 
 print_center "Введите пароль пользователя:"
-read -s "> " USER_PASSWORD
+read -s  USER_PASSWORD
 echo ""  # Добавляем перевод строки после ввода пароля
 
 print_center "Введите пароль root:"
-read -s "> " ROOT_PASSWORD
+read -s  ROOT_PASSWORD
 echo ""  # Добавляем перевод строки после ввода пароля
 
 print_center "Введите имя вашего пк:"
@@ -426,8 +424,9 @@ sleep 2
 select_timezone
 sleep 6
 clear
-
- print_center "=== Выбор режима разметки диска ==="
+echo ""
+echo ""
+ print_center "=== ВЫБОР РЕЖИМА РАЗМЕТКИ ДИСКА ==="
     echo
     print_center "1) Авто ( для ленивых :) 2 раздела: EFI и ROOT)"
     print_center "2) Ручная (на ваше усмотрение)"
@@ -441,7 +440,7 @@ clear
             *) print_center "Неверный выбор, попробуйте снова"; echo ;;
         esac
     done
-
+clear
 sleep 2
 check_command "pacman -Sy reflector --noconfirm" "Не удалось установить reflector"
 sleep 4
