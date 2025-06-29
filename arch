@@ -147,7 +147,8 @@ check_command "mount -o $EXT4_OPTIONS "$HOME" /mnt/home" "Не удалось с
 }
 
 filesystem_root() {
-
+echo""
+echo""
 while true; do
   print_center "ВЫБИРИТЕ ФАЙЛОВУЮ СИСТЕМУ КОРНЕВОГО РАЗДЕЛА (EXT4 или BTRFS):"
   read FILESYSTEM
@@ -179,7 +180,8 @@ print_center "Диск $DISK успешно очищен"
 
 # Ручная разметка (cfdisk)
 manual_partition() {
-
+echo""
+echo""
 print_center "=== РУЧНАЯ РАЗМЕТКА ==="
 
 # Запрос параметров
@@ -271,11 +273,11 @@ check_partitions
 filesystem_root
 clear
 if [ -n "$HOME" ]; then
-
-print_center "Выбери файловую систему для домашнего раздела"
+echo""
+echo""
 
 while true; do
-  print_center "Выберите файловую систему (ext4 или btrfs):"
+  print_center "ВЫБИРИТЕ ФАЙЛОВУЮ СИСТЕМУ ДОМАШНЕГО РАЗДЕЛА (EXT4 или BTRFS):"
   read FILESYSTEM_HOME
   case $FILESYSTEM_HOME in
     ext4|btrfs)
@@ -298,15 +300,14 @@ fi
 }
 
 auto_partition() {
-
+clear
 filesystem_root
 clear
-wipe_disk
 sleep 4
 # Схема разметки GPT
-check_command "echo "label: gpt
+echo "label: gpt
 size=512M, type=uefi, name=EFI, bootable
-type=linux-filesystem, name=ROOT" | sfdisk "$DISK""
+type=linux-filesystem, name=ROOT" | sfdisk "$DISK" > /dev/null 2>&1
 
 # === Определение разделов ===
 if [[ $DISK =~ "nvme" ]]; then
@@ -324,6 +325,8 @@ mount_efi
 
 # Функция выбора таймзоны
 select_timezone() {
+echo""
+echo""
   print_center "=== ВЫБОР ЧАСОВОГО ПОЯСА ==="
 echo""
   print_center "Выберите регион:"
@@ -362,10 +365,9 @@ run_chroot() {
 }
 
 
-
-
-
 clear
+echo""
+echo""
 print_center "ARCH LINUX"
 
 # === Выбор диска ===
@@ -402,7 +404,11 @@ print_center "Не удалось размонтировать диск $DISK с
 print_center "Диск $DISK успешно размонтирован."
 
 fi
+wipe_disk
+sleap 4
 clear
+echo""
+echo""
 print_center "=== ЗАПРОС ИМЕНИ ПОЛЬЗОВАТЕЛЯ, ПАРОЛЯ И ИМЕНИ ВАШЕГО ПК ==="
 
 print_center "Введите имя пользователя:"
@@ -422,10 +428,10 @@ clear
 sleep 2
 # === Выбор часового пояса ===
 select_timezone
-sleep 6
+sleep 4
 clear
-echo ""
-echo ""
+echo""
+echo""
  print_center "=== ВЫБОР РЕЖИМА РАЗМЕТКИ ДИСКА ==="
     echo
     print_center "1) Авто ( для ленивых :) 2 раздела: EFI и ROOT)"
