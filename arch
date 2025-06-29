@@ -3,20 +3,13 @@
 setfont cyr-sun16 2>/dev/null
 
 # === Переменные ===
-# Файловая система (ext4 или btrfs)
+
 FILESYSTEM=""
-# Часовой пояс
 TIMEZONE=""
-# Имя пользователя
 USERNAME=""
-# Пароль пользователя
 USER_PASSWORD=""
-# Имя хоста
 HOSTNAME=""
-# Диск для установки
 DISK=""
-# Размер раздела EFI
-#ROOT_PARTITION_SIZE="100%"
 BTRFS_OPTIONS="rw,noatime,compress=zstd:2,ssd,space_cache=v2,discard=async"
 EXT4_OPTIONS="noatime,discard,defaults"
 HOME=""
@@ -24,6 +17,7 @@ FILESYSTEM_HOME=""
 SWAP=""
 HOME_SIZE=""
 SWAP_SIZE=""
+
 # =Функции=
 
 # Функция для вывода многострочного текста по центру с цветом
@@ -95,26 +89,24 @@ fi
 mount_partitions() {
 
     if [ "$FILESYSTEM" = "btrfs" ]; then
-        echo "Форматируем корневой раздел $ROOT как Btrfs"
 check_command "mkfs.btrfs -f "$ROOT"" "Не удалось отформатировать раздел ROOT"
 check_command "mount "$ROOT" /mnt" "Не удалось смонтировать раздел ROOT"
 
         echo "Создаем обязательные подтома Btrfs"
-        btrfs subvolume create /mnt/@
-        btrfs subvolume create /mnt/@snapshots
-        btrfs subvolume create /mnt/@var
-        btrfs subvolume create /mnt/@log
-        btrfs subvolume create /mnt/@cache
+check_command "btrfs subvolume create /mnt/@" "Не удалось создать @"
+check_command "btrfs subvolume create /mnt/@snapshots" "Не удалось создать @snapshots"
+check_command "btrfs subvolume create /mnt/@var" "Не удалось создать @var"
+check_command "btrfs subvolume create /mnt/@log" "Не удалось создать @log"
+check_command "btrfs subvolume create /mnt/@cache" "Не удалось создать @cache"
 
         # Создаем @home ТОЛЬКО если нет отдельного раздела HOME
-        if [ -z "$HOME" ]; then
-            echo "Создаем подтом @home (отдельный HOME раздел не указан)"
-            btrfs subvolume create /mnt/@home
-        fi
+    if [ -z "$HOME" ]; then
 
-        umount /mnt
+check_command "btrfs subvolume create /mnt/@home"
+fi
 
-        echo "Монтируем подтома Btrfs"
+umount /mnt
+
 check_command "mount -o $BTRFS_OPTIONS,subvol=@ "$ROOT" /mnt"  "Не удалось смонтировать подтом @"
         mkdir -p /mnt/{var,.snapshots}
 
@@ -130,25 +122,24 @@ check_command "mount -o $BTRFS_OPTIONS,subvol=@cache "$ROOT" /mnt/var/cache" "Н
   check_command "mount -o $BTRFS_OPTIONS,subvol=@home "$ROOT" /mnt/home"  "Не удалось смонтировать подтом @home"
         fi
     else
-        echo "Форматируем корневой раздел $ROOT как ext4"
 check_command "mkfs.ext4 -F "$ROOT"" "Не удалось отформатировать раздел ROOT"
 check_command "mount -o $EXT4_OPTIONS "$ROOT" /mnt" "Не удалось смонтировать раздел ROOT"
     fi
-echo "Значение HOME: [$HOME]"
+
     # Обрабатываем домашний раздел (ЕСЛИ ОН УКАЗАН)
     if [ -n "$HOME" ]; then
-        echo "Настройка домашнего раздела $HOME"
+
         mkdir -p /mnt/home
-echo "Значение HOME: [$HOME]"
+
         if [ "$FILESYSTEM_HOME" = "btrfs" ]; then
-            echo "Форматируем как Btrfs с подтомом @home"
+
 check_command "mkfs.btrfs -f "$HOME"" "Не удалось отформатировать раздел HOME"
 check_command "mount "$HOME" /mnt/home" "Не удалось смонтировать раздел HOME"
             btrfs subvolume create /mnt/home/@home
             umount /mnt/home
 check_command "mount -o $BTRFS_OPTIONS,subvol=@home "$HOME" /mnt/home" "Не удалось смонтировать подтом @home"
         else
-            echo "Форматируем как ext4"
+
 check_command "mkfs.ext4 -F "$HOME"" "Не удалось отформатировать раздел HOME"
 check_command "mount -o $EXT4_OPTIONS "$HOME" /mnt/home" "Не удалось смонтировать раздел HOME"
         fi
@@ -175,17 +166,17 @@ done
 }
 
 wipe_disk() {
-    swapoff -a
+check_command "swapoff -a" "Не удалось выключить свап"
     # Удаляем все подписи файловых систем
-    wipefs -a "$DISK"
+check_command "wipefs -a "$DISK"" "Не удалось удалить подписи фс"
 
     # Удаляем таблицу разделов (GPT/MBR)
-    sgdisk -Z "$DISK"
+check_command "sgdisk -Z "$DISK"" "Не удалось удалить таблицу разделов"
 
     # Применяем изменения
-    partprobe "$DISK"
+check_command "partprobe "$DISK"" "Не удалось синхронизировать диск"
 
-   print_center "Диск $DISK успешно очищен"
+print_center "Диск $DISK успешно очищен"
 }
 
 # Ручная разметка (cfdisk)
@@ -281,7 +272,7 @@ fi
 
 check_partitions
 filesystem_root
-
+clear
 if [ -n "$HOME" ]; then
 
 print_center "Выбери файловую систему для домашнего раздела"
@@ -311,6 +302,7 @@ fi
 auto_partition() {
 
 filesystem_root
+clear
 wipe_disk
 sleep 4
 # Схема разметки GPT
@@ -335,9 +327,9 @@ mount_efi
 # Функция выбора таймзоны
 select_timezone() {
   print_center "=== ВЫБОР ЧАСОВОГО ПОЯСА ==="
-
+echo""
   print_center "Выберите регион:"
-
+echo""
   PS3="> "
 
   # Получаем список всех регионов
@@ -348,7 +340,7 @@ select_timezone() {
   done
 
   print_center "Выберите город:"
-
+echo""
   # Получаем список всех городов для выбранного региона
   CITIES=($(timedatectl list-timezones | grep "^$REGION/" | awk -F'/' '{print $2}' | sort -u | grep -v '^$' | tr -d '\r'))
 
@@ -357,7 +349,7 @@ select_timezone() {
   done
 sleep 2
   TIMEZONE="$REGION/$CITY"
-
+echo""
   print_center "Выбран часовой пояс: $TIMEZONE"
 }
 
@@ -412,33 +404,33 @@ print_center "Не удалось размонтировать диск $DISK с
 print_center "Диск $DISK успешно размонтирован."
 
 fi
-
+clear
 print_center "=== ЗАПРОС ИМЕНИ ПОЛЬЗОВАТЕЛЯ, ПАРОЛЯ И ИМЕНИ ВАШЕГО ПК ==="
 
 print_center "Введите имя пользователя:"
-read USERNAME
+read -p "> " USERNAME
 
 print_center "Введите пароль пользователя:"
-read -s USER_PASSWORD
+read -s "> " USER_PASSWORD
 echo ""  # Добавляем перевод строки после ввода пароля
 
 print_center "Введите пароль root:"
-read -s ROOT_PASSWORD
+read -s "> " ROOT_PASSWORD
 echo ""  # Добавляем перевод строки после ввода пароля
 
 print_center "Введите имя вашего пк:"
-read HOSTNAME
-
+read -p "> " HOSTNAME
+clear
 sleep 2
 # === Выбор часового пояса ===
 select_timezone
 sleep 6
 clear
 
- print_center "Выбор режима разметки диска"
+ print_center "=== Выбор режима разметки диска ==="
     echo
-    print_center "1) Авто (2 раздела: EFI и ROOT)"
-    print_center "2) Ручное (разметка : ROOT,EFI,HOME,SWAP)"
+    print_center "1) Авто ( для ленивых :) 2 раздела: EFI и ROOT)"
+    print_center "2) Ручная (на ваше усмотрение)"
     echo
 
     while true; do
