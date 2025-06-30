@@ -641,4 +641,4 @@ print_center "СИСТЕМА УСПЕШНО УСТАНОВЛЕНА!!!"
 sleep 4
 # === Перезагрузка ===
 print_center "Перезагрузка..."
-#reboot
+reboot
