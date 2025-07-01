@@ -34,6 +34,8 @@ print_center() {
 }
 
 show_progress() {
+echo""
+echo""
   local current=$1
   local total=$2
   local message="$3"
@@ -45,6 +47,8 @@ show_progress() {
   local reset=$'\e[0m'
   local gray=$'\e[90m'
 
+echo""
+echo""
   local percentage=$(( (current * 100) / total ))
   local term_width=$(tput cols)
   local max_bar_length=$((term_width - 15))
