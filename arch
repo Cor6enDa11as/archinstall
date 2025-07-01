@@ -472,14 +472,17 @@ echo""
         esac
     done
 clear
+
 current_step=3
 show_progress "$current_step" "$total_steps" "Установка и обновление зеркал..."
-#sleep 6
-#check_command "pacman -Sy reflector --noconfirm" "Не удалось установить reflector"
+sleep 6
+check_command "pacman -Syy reflector --noconfirm" "Не удалось установить reflector"
 sleep 4
-#reflector -c 'Russia,Belarus' --save /etc/pacman.d/mirrorlist
-#check_command "pacman -Sy" "Не удалось обновление"
-#sleep 4
+reflector -c 'Russia,Belarus' --save /etc/pacman.d/mirrorlist
+sleep 10
+check_command "pacman -Syy" "Не удалось обновление"
+sleep 4
+
 current_step=4
 show_progress "$current_step" "$total_steps" "Установка системы, рабочего стола и необходимых утилит..."
 
