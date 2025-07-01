@@ -582,5 +582,5 @@ echo""
 print_center "СИСТЕМА УСПЕШНО УСТАНОВЛЕНА!!!"
 sleep 4
 print_center "Перезагрузка..."
-sleep 4
+sleep 6
 reboot
