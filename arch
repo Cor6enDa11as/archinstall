@@ -34,8 +34,7 @@ print_center() {
 }
 
 show_progress() {
-echo""
-echo""
+
   local current=$1
   local total=$2
   local message="$3"
@@ -404,6 +403,13 @@ clear
 
 echo""
 echo""
+sleep 2
+select_timezone
+sleep 4
+clear
+
+echo""
+echo""
 
 print_center "=== ВЫБОР ДИСКА ==="
 echo""
@@ -452,11 +458,6 @@ print_center "Диск $DISK успешно очищен"
 sleep 4
 clear
 
-sleep 2
-
-select_timezone
-sleep 4
-clear
 echo""
 echo""
  print_center "=== ВЫБОР РЕЖИМА РАЗМЕТКИ ДИСКА ==="
