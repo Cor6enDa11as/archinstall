@@ -2,8 +2,6 @@
 
 setfont cyr-sun16 2>/dev/null
 
-# === Переменные ===
-
 FILESYSTEM=""
 TIMEZONE=""
 USERNAME=""
@@ -18,26 +16,19 @@ SWAP=""
 HOME_SIZE=""
 SWAP_SIZE=""
 
-# =Функции=
-
-# Функция для вывода многострочного текста по центру с цветом
 print_center() {
   local text="$1"
   local term_width=$(tput cols)
 
-  # Разделяем текст на строки
   while IFS= read -r line; do
-    # Удаляем лишние пробелы в начале и конце строки
+
     line=$(echo "$line" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
 
-    # Вычисляем отступы для центрирования
     padding=$(( (term_width - ${#line}) / 2 ))
 
-    # Выводим строку с цветом
     printf "%${padding}s\033[1;36m%s\033[0m\n" "" "$line"
   done <<< "$text"
 
-  # Добавляем две пустые строки
   echo
   echo
 }
@@ -69,44 +60,35 @@ show_progress() {
     bar+="${gray}-${reset}"
   done
 
-  # Если это первый шаг - выводим две пустые строки
   if [ "$current" -eq 1 ]; then
     printf "\n\n"
-    printf "\033[2A"  # Перемещаем курсор обратно вверх
+    printf "\033[2A"
   fi
 
-  # Перемещаем курсор в начало и очищаем две строки
-  printf "\r\033[K"       # Очищаем текущую строку
-  printf "\033[1A\033[K"   # Перемещаемся вверх и очищаем предыдущую строку
+  printf "\r\033[K"
+  printf "\033[1A\033[K"
 
-  # Выводим прогресс-бар (первая строка)
   printf "[%s]\n" "$bar"
 
-  # Выводим процент и сообщение (вторая строка)
   printf "${yellow}%3d%%${reset} ${green}%s${reset}" "$percentage" "$message"
 
-  # Если последний шаг, добавляем перенос строки
   [ "$current" -eq "$total" ] && echo ""
 }
 total_steps=13
 
-# Функция для вывода сообщения об ошибке и завершения скрипта
 error_handler() {
   echo -e "\n\033[1;31mОшибка: $1\033[0m"
   exit 1
 }
 
-# Функция для скрытия вывода команды
 run_silent() {
   "$@" > /dev/null 2>&1
 }
 
-# Функция для проверки, является ли команда успешной
 check_command() {
   local command="$1"
   local error_message="$2"
 
-  # Выполняем команду с помощью run_silent
   run_silent /bin/bash -c "$command"
 
   if [ $? -ne 0 ]; then
@@ -114,7 +96,6 @@ check_command() {
   fi
 }
 
-# Проверка необходимых разделов
 check_partitions() {
 current_step=1
 show_progress "$current_step" "$total_steps" "Проверка выбранных разделов..."
@@ -151,7 +132,6 @@ check_command "btrfs subvolume create /mnt/@var" "Не удалось созда
 check_command "btrfs subvolume create /mnt/@log" "Не удалось создать @log"
 check_command "btrfs subvolume create /mnt/@cache" "Не удалось создать @cache"
 
-        # Создаем @home ТОЛЬКО если нет отдельного раздела HOME
     if [ -z "$HOME" ]; then
 
 check_command "btrfs subvolume create /mnt/@home"
@@ -168,7 +148,6 @@ mkdir -p /mnt/{var/log,var/cache}
 check_command "mount -o $BTRFS_OPTIONS,subvol=@log "$ROOT" /mnt/var/log" "Не удалось смонтировать подтом @log"
 check_command "mount -o $BTRFS_OPTIONS,subvol=@cache "$ROOT" /mnt/var/cache" "Не удалось смонтировать подтом @cache"
 
-        # Монтируем @home ТОЛЬКО если нет отдельного раздела HOME
         if [ -z "$HOME" ]; then
         mkdir -p /mnt/home
   check_command "mount -o $BTRFS_OPTIONS,subvol=@home "$ROOT" /mnt/home"  "Не удалось смонтировать подтом @home"
@@ -178,7 +157,6 @@ check_command "mkfs.ext4 -F "$ROOT"" "Не удалось отформатиро
 check_command "mount -o $EXT4_OPTIONS "$ROOT" /mnt" "Не удалось смонтировать раздел ROOT"
     fi
 
-    # Обрабатываем домашний раздел (ЕСЛИ ОН УКАЗАН)
     if [ -n "$HOME" ]; then
 
         mkdir -p /mnt/home
@@ -217,14 +195,12 @@ while true; do
 done
 }
 
-# Ручная разметка
 manual_partition() {
 clear
 echo""
 echo""
 print_center "=== РУЧНАЯ РАЗМЕТКА ==="
 
-# Запрос параметров
 print_center "ВВЕДИТЕ РАЗМЕР ЗАГРУЗОЧНОГО РАЗДЕЛА (EFI - рекомендуется 300М-512M, обязательно):"
 while true; do
     read -p " > " EFI_SIZE
@@ -256,7 +232,7 @@ else
 fi
 clear
 sleep 4
-# Создание разделов
+
 {
     echo "label: gpt"
     echo "size=$EFI_SIZE, type=uefi, name=EFI, bootable"
@@ -265,7 +241,7 @@ sleep 4
     [[ "$CREATE_SWAP" == "y" ]] && echo "size=$SWAP_SIZE, type=linux-swap, name=SWAP"
 } | sfdisk "$DISK" > /dev/null 2>&1
 
-# Обязательные разделы (EFI и ROOT)
+
 if [[ $DISK =~ "nvme" ]]; then
     EFI="${DISK}p1"
     ROOT="${DISK}p2"
@@ -274,16 +250,14 @@ else
     ROOT="${DISK}2"
 fi
 
-# Раздел 3 (HOME или SWAP)
 if [[ -n "$HOME_SIZE" ]]; then
-    # Если задан HOME, то раздел 3 = HOME
+
     if [[ $DISK =~ "nvme" ]]; then
         HOME="${DISK}p3"
     else
         HOME="${DISK}3"
     fi
 
-    # Раздел 4 (SWAP, только если задан $SWAP_SIZE)
     if [[ -n "$SWAP_SIZE" ]]; then
         if [[ $DISK =~ "nvme" ]]; then
             SWAP="${DISK}p4"
@@ -291,11 +265,11 @@ if [[ -n "$HOME_SIZE" ]]; then
             SWAP="${DISK}4"
         fi
     else
-        SWAP=""  # SWAP не создаётся
+        SWAP=""
     fi
 
 else
-    # Если HOME не задан, то раздел 3 = SWAP (только если задан $SWAP_SIZE)
+
     HOME=""
     if [[ -n "$SWAP_SIZE" ]]; then
         if [[ $DISK =~ "nvme" ]]; then
@@ -304,7 +278,7 @@ else
             SWAP="${DISK}3"
         fi
     else
-        SWAP=""  # Ни HOME, ни SWAP не созданы
+        SWAP=""
     fi
 fi
 
@@ -346,12 +320,10 @@ filesystem_root
 clear
 sleep 4
 
-# Схема разметки GPT
 echo "label: gpt
 size=512M, type=uefi, name=EFI, bootable
 type=linux-filesystem, name=ROOT" | sfdisk "$DISK" > /dev/null 2>&1
 
-# === Определение разделов ===
 if [[ $DISK =~ "nvme" ]]; then
     EFI="${DISK}p1"
     ROOT="${DISK}p2"
@@ -365,7 +337,6 @@ mount_partitions
 mount_efi
 }
 
-# Функция выбора таймзоны
 select_timezone() {
 echo""
 echo""
@@ -375,7 +346,6 @@ echo""
 echo""
   PS3="> "
 
-  # Получаем список всех регионов
   REGIONS=($(timedatectl list-timezones | awk -F'/' '{print $1}' | sort -u | grep -v '^$' | tr -d '\r'))
 
   select REGION in "${REGIONS[@]}"; do
@@ -384,7 +354,7 @@ echo""
 
   print_center "Выберите город:"
 echo""
-  # Получаем список всех городов для выбранного региона
+
   CITIES=($(timedatectl list-timezones | grep "^$REGION/" | awk -F'/' '{print $2}' | sort -u | grep -v '^$' | tr -d '\r'))
 
   select CITY in "${CITIES[@]}"; do
@@ -396,7 +366,6 @@ echo""
   print_center "Выбран часовой пояс: $TIMEZONE"
 }
 
-# Функция для выполнения команд в chroot и проверки результата
 run_chroot() {
     local CMD="$1"
     run_silent arch-chroot /mnt /bin/bash -c "$CMD"
@@ -421,11 +390,11 @@ read -p "> " USERNAME
 
 print_center "Введите пароль пользователя:"
 read -s  USER_PASSWORD
-echo ""  # Добавляем перевод строки после ввода пароля
+echo""
 
 print_center "Введите пароль root:"
 read -s  ROOT_PASSWORD
-echo ""  # Добавляем перевод строки после ввода пароля
+echo""
 
 print_center "Введите имя вашего пк (латиница):"
 read -p "> " HOSTNAME
@@ -433,7 +402,7 @@ clear
 
 echo""
 echo""
-# === Выбор диска ===
+
 print_center "=== ВЫБОР ДИСКА ==="
 echo""
 print_center "=== ВНИМАНИЕ!!! ВЫБРАННЫЙ ДИСК БУДЕТ ОТФОРМАТИРОВАН!!!ВСЕ РАЗДЕЛЫ БУДУТ УДАЛЕНЫ!!! ==="
@@ -446,18 +415,15 @@ print_center "ВВЕДИТЕ ПОЛНЫЙ ПУТЬ К ДИСКУ (наприме
 
 read -p "> " DISK
 
-# === Проверка существования диска ===
 if [ ! -b "$DISK" ]; then
   error_handler "Диск $DISK не найден"
 fi
 
 sleep 4
 
-# === Размонтирование диска, если он смонтирован ===
 if mount | grep -q "$DISK"; then
 print_center "Диск $DISK смонтирован. Размонтирую его..."
 
-  # Попытка рекурсивного размонтирования
   umount -R /mnt 2>/dev/null
 
   if [ $? -ne 0 ]; then
@@ -474,30 +440,28 @@ echo""
 echo""
 print_center "УДАЛЕНИЕ РАЗДЕЛОВ на $DISK "
 check_command "swapoff -a" "Не удалось выключить свап"
-    # Удаляем все подписи файловых систем
+
 check_command "wipefs -a "$DISK"" "Не удалось удалить подписи фс"
 
-    # Удаляем таблицу разделов (GPT/MBR)
 check_command "sgdisk -Z "$DISK"" "Не удалось удалить таблицу разделов"
 
-    # Применяем изменения
 check_command "partprobe "$DISK"" "Не удалось синхронизировать диск"
 print_center "Диск $DISK успешно очищен"
 sleep 4
 clear
 
 sleep 2
-# === Выбор часового пояса ===
+
 select_timezone
 sleep 4
 clear
 echo""
 echo""
  print_center "=== ВЫБОР РЕЖИМА РАЗМЕТКИ ДИСКА ==="
-    echo
+    echo""
     print_center "1) АВТО ( для ленивых :-) 2 раздела: EFI и ROOT)"
     print_center "2) РУЧНАЯ (на ваше усмотрение)"
-    echo
+    echo""
 
     while true; do
         read -p "Введите ваш выбор (1 или 2): " choice
@@ -510,91 +474,68 @@ echo""
 clear
 current_step=3
 show_progress "$current_step" "$total_steps" "Установка и обновление зеркал..."
-sleep 6
-check_command "pacman -Sy reflector --noconfirm" "Не удалось установить reflector"
+#sleep 6
+#check_command "pacman -Sy reflector --noconfirm" "Не удалось установить reflector"
 sleep 4
-reflector -c 'Russia,Belarus' --save /etc/pacman.d/mirrorlist
-check_command "pacman -Sy" "Не удалось обновление"
-sleep 4
+#reflector -c 'Russia,Belarus' --save /etc/pacman.d/mirrorlist
+#check_command "pacman -Sy" "Не удалось обновление"
+#sleep 4
 current_step=4
 show_progress "$current_step" "$total_steps" "Установка системы, рабочего стола и необходимых утилит..."
-# === Установка базовой системы ===
+
 check_command "pacstrap -i /mnt base linux linux-firmware sudo nano networkmanager dhcpcd plasma-desktop sddm sddm-kcm gwenview dolphin kate power-profiles-daemon firefox packagekit-qt5 bluez bluez-utils konsole ark firefox firefox-i18n-ru btrfs-progs ttf-liberation noto-fonts-cjk noto-fonts-emoji intel-ucode amd-ucode  pacman-contrib grub grub-btrfs efibootmgr gst-plugins-bad gst-plugins-ugly gst-plugins-good gst-plugins-base dosfstools mtools unrar --noconfirm" "Не удалось установить базовую систему и KDE Plasma"
 
 sleep 3
 current_step=5
 show_progress "$current_step" "$total_steps" "Генерация fstab..."
 sleep 6
-# === Генерация fstab ===
+
 check_command "genfstab -U /mnt >> /mnt/etc/fstab" "Не удалось сгенерировать fstab"
-
-
-# === Chroot-настройка ===
 
 sleep 3
 current_step=6
 show_progress "$current_step" "$total_steps" "Настройка времени..."
 sleep 6
-#echo "Настройка часового пояса..."
+
 run_chroot "ln -sf /usr/share/zoneinfo/$TIMEZONE /etc/localtime"
 
-#echo "Установка аппаратных часов..."
 run_chroot "hwclock --systohc"
 
 sleep 3
 current_step=7
 show_progress "$current_step" "$total_steps" "Локализация системы..."
 sleep 6
-#echo "Раскомментирование строк для русской локали..."
+
 run_chroot "sed -i 's/#ru_RU.UTF-8 UTF-8/ru_RU.UTF-8 UTF-8/g' /etc/locale.gen"
 run_chroot "sed -i 's/#en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/g' /etc/locale.gen"
-
-#echo "Генерация локалей..."
 run_chroot "locale-gen"
-
-#echo "Установка LANG..."
 run_chroot "echo LANG=ru_RU.UTF-8 > /etc/locale.conf"
-
-#echo "Установка KEYMAP..."
 run_chroot "echo KEYMAP=ru > /etc/vconsole.conf"
-
-#echo "Установка FONT..."
 run_chroot "echo 'FONT=cyr-sun16' >> /etc/vconsole.conf"
 sleep 3
 current_step=8
 show_progress "$current_step" "$total_steps" "Настройка пользователя..."
 sleep 6
-#echo "Установка имени хоста..."
-run_chroot "echo \"$HOSTNAME\" > /etc/hostname"
 
-#echo "Добавление localhost в hosts..."
+run_chroot "echo \"$HOSTNAME\" > /etc/hostname"
 run_chroot "echo \"127.0.0.1 localhost\" >> /etc/hosts"
 run_chroot "echo \"::1       localhost\" >> /etc/hosts"
-sleep 3
-#echo "Установка пароля root..."
 run_chroot "echo \"root:$ROOT_PASSWORD\" | chpasswd"
-
-#echo "Создание пользователя..."
 run_chroot "useradd -m -G wheel -s /bin/bash \"$USERNAME\""
-
-#echo "Установка пароля пользователя..."
 run_chroot "echo \"$USERNAME:$USER_PASSWORD\" | chpasswd"
-
-#echo "Настройка sudo..."
 run_chroot "echo \"%wheel ALL=(ALL) ALL\" >> /etc/sudoers"
 sleep 3
 current_step=9
 show_progress "$current_step" "$total_steps" "Создание начального образа системы..."
 sleep 6
-#echo "Создание initramfs..."
+
 run_chroot "mkinitcpio -P"
 sleep 3
 current_step=10
 show_progress "$current_step" "$total_steps" "Настройка пакетного менеджера..."
 sleep 6
-#echo "Включение multilib репозитория..."
+
 run_chroot "sed -i '/^#\[multilib\]/,/^#Include/ s/^#//' /etc/pacman.conf"
-#echo "Добавление опций Color и ILoveCandy..."
 run_chroot "sed -i 's/#Color/Color/' /etc/pacman.conf"
 run_chroot "sed -i '/^Color/a ILoveCandy' /etc/pacman.conf"
 run_chroot "pacman -Sy"
@@ -615,30 +556,24 @@ sleep 3
 current_step=12
 show_progress "$current_step" "$total_steps" "Включение необходимых служб..."
 sleep 6
-#echo "Включение NetworkManager..."
-run_chroot "systemctl enable NetworkManager"
 
-#echo "Включение SDDM..."
+run_chroot "systemctl enable NetworkManager"
 run_chroot "systemctl enable sddm"
 
 sleep 3
 current_step=13
 show_progress "$current_step" "$total_steps" "Завершение установки..."
 sleep 6
-# === Выход из chroot ===
-#echo "Выход из chroot..."
+
 arch-chroot /mnt /bin/bash -c "exit"
 
-# === Размонтирование ===
-#echo "Размонтирование /mnt..."
 umount -R /mnt
 sleep 2
-echo
-echo
+echo""
+echo""
 
 print_center "СИСТЕМА УСПЕШНО УСТАНОВЛЕНА!!!"
-
 sleep 4
-# === Перезагрузка ===
 print_center "Перезагрузка..."
+sleep 4
 reboot
