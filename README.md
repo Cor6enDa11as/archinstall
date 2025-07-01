@@ -28,8 +28,14 @@ git clone https://github.com/Cor6enDa11as/archinstall.git
 cd archinstall
 ./arch
 ```
-- Следуем запросам
-- ![Создаём пользователя и задаём пароль](screenshots/user.png)
+- Создаём пользователя,задаём пароль,вводим имя пк
+![Создаём пользователя и задаём пароль](screenshots/user.png)
+
+- Выбираем часовой пояс и город
+![timezone](screenshots/timezone.png)
+
+- Выбираем диск для установки системы
+![disk](screenshots/disk.png)
 
 ## Важно
 
