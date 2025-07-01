@@ -481,7 +481,7 @@ if ! ping -c 1 archlinux.org &> /dev/null; then
   error_handler "Ошибка: Нет интернета!"
 fi
 check_command "pacman -Sy --noconfirm pacman-contrib" "Не удалось установить pacman-contrib"
-check_command "curl -s "https://archlinux.org/mirrorlist/?country=RU&country=BY" | sed 's/^#Server/Server/' | rankmirrors -n 25 - > /etc/pacman.d/mirrorlist" "Не удалось копирование в  mirrorlist"
+curl -s "https://archlinux.org/mirrorlist/?country=RU&country=BY" | sed 's/^#Server/Server/' | rankmirrors -n 25 - > /etc/pacman.d/mirrorlist
 check_command "pacman -Syy --noconfirm" "Не удалось обновление"
 sleep 4
 
