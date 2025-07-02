@@ -554,9 +554,10 @@ show_progress "$current_step" "$total_steps" "Установка загрузч�
 sleep 6
 
 if [ -d /sys/firmware/efi/ ]; then
-    #echo "Установка GRUB (EFI)..."
+
     run_chroot "grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB --no-nvram --removable /dev/$DISK"
-    #echo "Генерация grub.cfg (EFI)..."
+    run_chroot "sed -i 's/^GRUB_TIMEOUT=.*/GRUB_TIMEOUT=0/' /etc/default/grub"
+    run_chroot "sed -i 's/^GRUB_TIMEOUT_STYLE=.*/GRUB_TIMEOUT_STYLE=hidden/' /etc/default/grub"
     run_chroot "grub-mkconfig -o /boot/grub/grub.cfg"
 fi
 
